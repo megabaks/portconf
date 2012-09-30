@@ -156,7 +156,7 @@ sort_uses(){
 		done
 
 		for opt in ${atom_opts};do
-		uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr "\n" " " )"
+		uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr "\n" " ")"
 		uses+=" $(echo ${atom_opts} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 		unset opt
 		done

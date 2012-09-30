@@ -359,7 +359,7 @@ not_if(){
   fi
 }
 for package in `find ${PORT_ETC}/package* -type f`;do
-  if [[ -s "${package}" ]];then
+  if [[ -s "${package}" && -n "$(grep -v "^#" < "${package}")" ]];then
 	if [ -z "${force_not_installed}" ];then
 	  not_if;
 	  eend $? 2>/dev/null
@@ -368,7 +368,8 @@ for package in `find ${PORT_ETC}/package* -type f`;do
 	  eend $? 2>/dev/null
 	fi
   else
-	echo -e "${underline}Removing empty file${restore} ${contrast}${package}${restore}"
+	pack="${package%/*}"
+	echo -e "${underline}Removing empty file${restore} ${contrast}${pack}${restore}"
 	rm ${package} 2>/dev/null
 	eend $? 2>/dev/null
   fi

@@ -583,7 +583,7 @@ f_to_d(){
 	if [[ -f "${package}" ]];then
 	echo -e "${underline}Processing${restore}: ${contrast}${package##*/}${restore}"
 	  tmp_file="/tmp/${package##*/}"
-	  mv ${package} ${tmp_file}
+	  mv ${package} ${tmp_file} 2>/dev/null
 	  sed -e 's|^#.*||g' -i "${tmp_file}"
 	  dir="${PORT_ETC}/${package##*/}"
 	  mkdir "${dir}"
@@ -618,7 +618,7 @@ d_to_f(){
 		done < "${subfile}"
 	  done
 	  rm -rf "${package}" 2>/dev/null
-	  mv "${tmp_file}" "${package}"
+	  mv "${tmp_file}" "${package}" 2>/dev/null
 	  eend $? 2>/dev/null
 	  rm "${tmp_file}" 2>/dev/null
 	elif [[ -f "${package}" ]];then

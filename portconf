@@ -639,7 +639,7 @@ available OPTIONS:
 --rm-comments/-c:      Delete lines starting with comment.
 --rm-all-comments/-ac: Delete all comments.
 --full/-f:             Analog '-s -t -uf'
---files-2-dirs/-f2d:   Converting package.* files to directories.
+--files-2-dirs/-f2d:   Converting package.* files to directories(comments will be removed).
 --dirs-2-files/-d2f:   Converting package.* dirs to files.
 
 OPTIONS must be separated by SPACE."

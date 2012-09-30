@@ -348,7 +348,7 @@ not_if(){
 			fi
 		  fi
 		else
-		  if [ -z "${founded}" ];then
+		  if [[ -z "${founded}" || -n "${force_not_installed}" ]];then
 			echo -e "Removing ${red}not_installed${restore} ${green}${category}/${pn}${restore}"
 			sed -e "s|.*\<${category}/${pn}\>.*||" -e '/^$/d' -i ${package} 2>/dev/null
 			eend $? 2>/dev/null
@@ -360,8 +360,13 @@ not_if(){
 }
 for package in `find ${PORT_ETC}/package* -type f`;do
   if [[ -s "${package}" ]];then
-	not_if;
-	eend $? 2>/dev/null
+	if [ -z "${force_not_installed}" ];then
+	  not_if;
+	  eend $? 2>/dev/null
+	elif ! `grep -q "\.mask" <<< "${package}"`;then
+	  not_if;
+	  eend $? 2>/dev/null
+	fi
   else
 	echo -e "${underline}Removing empty file${restore} ${contrast}${package}${restore}"
 	rm ${package} 2>/dev/null
@@ -636,6 +641,7 @@ available OPTIONS:
 --use-make/-um:        Delete profile enabled useflags from make.conf.
 --use-full/-uf:        Analog '-us -ui -um'.
 --trash/-t:            Delete not_founded/not_installed entries.
+--force-trash/-ft:     Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments/-c:      Delete lines starting with comment.
 --rm-all-comments/-ac: Delete all comments.
 --full/-f:             Analog '-s -t -uf'
@@ -680,6 +686,13 @@ case "${opt}" in
   backup;
   not_found;
   env_not_installed;
+  not_installed_founded
+  exit 0;;
+--force-trash | -ft )
+  backup;
+  not_found;
+  env_not_installed;
+  force_not_installed="1";
   not_installed_founded
   exit 0;;
 --rm-comments | -c )

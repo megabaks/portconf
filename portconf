@@ -75,7 +75,11 @@ backup(){
 	fi
 	echo -e "Backups: ${green}creating${restore}..."
 	name="${BRDIR}/portage_$(date +%g.%m.%d-%H:%M).tar.bz2"
-	tar -jcf "${name}" -C /etc/ portage
+	if [ -f "/etc/make.conf" ];then
+	  tar -jcf "${name}" -C /etc/ portage make.conf
+	else
+	  tar -jcf "${name}" -C /etc/ portage
+	fi
 	eend $? 2>/dev/null
   else
 	echo -e "Backups: ${green}already up-to-date${restore}"
@@ -568,10 +572,12 @@ echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc
 USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | grep -v "^-" | sort -u | sed -e '/^$/d')"
 
 while read use;do
-  if `grep -q ${use} <<< "${USE}"`;then
-	echo -e "Twice enabled: ${green}${use}${restore}"
-	sed -e "s|\<${use}\>||" -i ${makefile}
-	eend $? 2>/dev/null
+  if [[ -n ${use} ]];then
+	if `grep -q ${use} <<< "${USE}"`;then
+	  echo -e "Twice enabled: ${green}${use}${restore}"
+	  sed -e "s|\<${use}\>||" -i ${makefile}
+	  eend $? 2>/dev/null
+	fi
   fi
 done <<< "${PROFILE}"
 eend $? 2>/dev/null

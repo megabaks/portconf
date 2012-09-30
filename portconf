@@ -622,39 +622,74 @@ d_to_f(){
   done <<< "`ls -d1 ${PORT_ETC}/package* | grep -v "~"`"
 }
 ############################################################################
+################ help ######################################################
+help_pc(){
+  echo -e \
+"Usage: portconf [OPTION] [OPTION]…[OPTION]
+available OPTIONS:
+--help/-h/-?/h:       This help.
+--restore/-r:          Rolling up /etc/portage to one of the available states.
+--backup/-b:           Create backup for current /etc/portage state.(enabled in all follow options)
+--sort/-s:             Sort entries alphabetically.
+--use-sort/-us:        Sort useflags.
+--use-invalid/-ui:     Delete invalid or global enabled useflags from package.use.
+--use-make/-um:        Delete profile enabled useflags from make.conf.
+--use-full/-uf:        Analog '-us -ui -um'.
+--trash/-t:            Delete not_founded/not_installed entries.
+--rm-comments/-c:      Delete lines starting with comment.
+--rm-all-comments/-ac: Delete all comments.
+--full/-f:             Analog '-s -t -uf'
+--files-2-dirs/-f2d:   Converting package.* files to directories.
+--dirs-2-files/-d2f:   Converting package.* dirs to files.
+
+OPTIONS must be separated by SPACE."
+}
+############################################################################
 ################ run_it ####################################################
 for opt in ${@};do
 case "${opt}" in
---restore | -r ) restore;;
---backup | -b ) backup;;
+--restore | -r )
+  restore
+  exit 0;;
+--backup | -b )
+  backup
+  exit 0;;
 --sort | -s )
   backup;
-  sort_uniq_files;;
+  sort_uniq_files
+  exit 0;;
 --use-sort | -us )
   backup;
-  sort_use_file;;
+  sort_use_file
+  exit 0;;
 --use-invalid | -ui )
   backup;
-  invalid_uses;;
+  invalid_uses
+  exit 0;;
 --use-make | -um )
   backup;
-  use_makeconf;;
+  use_makeconf
+  exit 0;;
 --use-full  | -uf )
   backup;
   sort_use_file;
   invalid_uses;
-  use_makeconf;;
+  use_makeconf
+  exit 0;;
 --trash | -t )
   backup;
   not_found;
   env_not_installed;
-  not_installed_founded;;
---rm-comments | -rc )
+  not_installed_founded
+  exit 0;;
+--rm-comments | -c )
   backup;
-  rm_comments;;
---rm-all-comments | -rac )
+  rm_comments
+  exit 0;;
+--rm-all-comments | -ac )
   backup;
-  rm_all_comments;;
+  rm_all_comments
+  exit 0;;
 --full | -f )
   backup;
   sort_uniq_files;
@@ -663,12 +698,18 @@ case "${opt}" in
   not_installed_founded;
   sort_use_file;
   invalid_uses;
-  use_makeconf;;
+  use_makeconf
+  exit 0;;
 --files-2-dirs | -f2d )
   backup;
-  f_to_d;;
+  f_to_d
+  exit 0;;
 --dirs-2-files | -d2f )
   backup;
-  d_to_f;;
+  d_to_f
+  exit 0;;
+--help | -h | -? | h )
+  help_pc;
+  exit 0;;
 esac
 done

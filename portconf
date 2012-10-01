@@ -57,9 +57,41 @@ PROFILE="$(echo -e "${PROFILE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d'
 [ -z "${PORTDIR}" ] && PORTDIR="/usr/portage"
 [ -n "${PORTDIR_OVERLAY}" ] && PORTDIR="${PORTDIR} ${PORTDIR_OVERLAY}"
 ############################################################################
+################ timestamp #################################################
+timestamp(){
+	ls -dgo --time-style=+%s --color=never ${*} 2>/dev/null | awk '{print $4}' | sort | tail -n1
+}
+############################################################################
+################ eix check #################################################
+eix_check(){
+	exist="$(eix --version 2>/dev/null)"
+	if [ -n "${exist}" ];then
+		eix_stamp="$(timestamp /var/cache/eix/portage.eix)"
+		for path in ${PORTDIR};do
+			[ -z "${port_stamp}" ] && port_stamp="0"
+			path_stamp="$(timestamp ${path}/{*,*/*})"
+			if (( "${path_stamp}" > "${port_stamp}" ));then
+				port_stamp="${path_stamp}"
+			fi
+		done
+		if (( "${port_stamp}" > "${eix_stamp}" ));then
+			echo -e "eix cache: ${green}updating${restore}"
+			emerge --metadata
+			eix-update
+			eend $? 2>/dev/null
+		else
+			echo -e "eix cache: ${green}already up-to-date${restore}"
+			eend $? 2>/dev/null
+		fi
+	else
+		echo -e "${green}app-portage/eix${restore} ${red}not installed!${restore}"
+		eend 1 2>/dev/null
+		exit 1
+	fi
+}
+############################################################################
 ################ backup ####################################################
 backup(){
-	timestamp(){ ls -dgo --time-style=+%s --color=never ${*} 2>/dev/null | awk '{print $4}' | sort | tail -n1 ;}
 	[ -d "${BRDIR}" ] || mkdir "${BRDIR}"
 	tarballs="$(ls -1 --color=never ${BRDIR})"
 	oldest="$(head -n1 <<< "${tarballs}")"
@@ -208,43 +240,20 @@ fi
 ############################################################################
 ################ not_installed #############################################
 ver_diff(){
-f="${1%%_*}"
-s="${2%%_*}"
-fe="${1#${f}}"
-se="${2#${s}}"
-for count in $(seq 6);do
-	fv=`echo "${f}" | cut -d "." -f$count`
-	sv=`echo "${s}" | cut -d "." -f$count`
-	if [[ "${fv}" -gt "${sv}" ]];then
+check="$(versionsort ${1} ${2} | tail -n1)"
+
+	if [[ "${check}" == "${1}" && "${check}" != "${2}" ]];then
 		echo 1 # ${1} > ${2}
 		return
 	fi
-	if [[ "${sv}" -gt "${fv}" ]];then
+	if [[ "${check}" == "${2}" && "${check}" != "${1}" ]];then
 		echo 2 # ${2} > ${1}
 		return
 	fi
-done
-if [[ -n "${fe}" || -n "${se}" ]];then
-	if [ -n "${fe}" ] && [ -n "${se}" ];then
-		[[ "${fe}" > "${se}" ]] && echo 1
-		[[ "${se}" > "${fe}" ]] && echo 2
-		[[ "${fe}" == "${se}" ]] && echo 0
+	if [[ "${check}" == "${1}" && "${check}" == "${2}" ]];then
+		echo 0 # ${1} == ${2}
+		return
 	fi
-	if [ -n "${fe}" ] && [ -z "${se}" ];then
-		grep -q alpha <<< "${fe}" && echo 2
-		grep -q beta <<< "${fe}" && echo 2
-		grep -q pre <<< "${fe}" && echo 2
-		grep -q rc <<< "${fe}" && echo 2
-	fi
-	if [ -z "${fe}" ] && [ -n "${se}" ];then
-			grep -q alpha <<< "${se}" && echo 1
-			grep -q beta <<< "${se}" && echo 1
-			grep -q pre <<< "${se}" && echo 1
-			grep -q rc <<< "${se}" && echo 1
-	fi
-else
-	echo 0
-fi
 }
 ######################################
 founded(){
@@ -678,6 +687,7 @@ case "${opt}" in
 	sort_use_file
 	exit 0;;
 --use-invalid | -ui )
+	eix_check;
 	backup;
 	invalid_uses
 	exit 0;;
@@ -686,18 +696,21 @@ case "${opt}" in
 	use_makeconf
 	exit 0;;
 --use-full | -uf )
+	eix_check;
 	backup;
 	sort_use_file;
 	invalid_uses;
 	use_makeconf
 	exit 0;;
 --trash | -t )
+	eix_check;
 	backup;
 	not_found;
 	env_not_installed;
 	not_installed_founded
 	exit 0;;
 --force-trash | -ft )
+	eix_check;
 	backup;
 	not_found;
 	env_not_installed;
@@ -713,6 +726,7 @@ case "${opt}" in
 	rm_all_comments
 	exit 0;;
 --full | -f )
+	eix_check;
 	backup;
 	sort_uniq_files;
 	not_found;

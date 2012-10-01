@@ -518,7 +518,7 @@ check_uses(){
 			sed -e "s|^${atom} *$||" -e '/^$/d' -i "${file}" 2>/dev/null
 			eend $? 2>/dev/null
 		fi
-	done <<< "$(grep -v "${IGNORE}" < "${file}")"
+	done <<< "$([ -n "${IGNORE}" ] && grep -v "${IGNORE}" < "${file}" || cat "${file}")"
 	eend $? 2>/dev/null
 }
 if [ -f "${PORT_ETC}/package.use" ];then
@@ -533,7 +533,11 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do
 		if [[ -s "${f}" ]];then
 			file="${f}"
-			atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+			if [ -n "${IGNORE}" ];then
+				atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}"`)"
+			else
+				atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+			fi
 			check_uses
 		else
 			echo -e "${underline}Removing empty file${restore} ${contrast}${f}${restore}"

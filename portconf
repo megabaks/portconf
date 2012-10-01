@@ -602,7 +602,7 @@ USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | grep -v "^-" | sort -u | sed -e 
 
 while read use;do
 	if [[ -n ${use} ]];then
-		if `grep -q ${use} <<< "${USE}"`;then
+		if `grep -q "^${use}$" <<< "${USE}"`;then
 			echo -e "Twice enabled: ${green}${use}${restore}"
 			sed -e "s|\<${use}\>||" -i ${makefile}
 			eend $? 2>/dev/null

@@ -19,6 +19,13 @@ PORT_ETC="/etc/portage"
 [ -f "/etc/portconf.conf" ] && . /etc/portconf.conf
 [ -z "${COUNT}" ] && COUNT="10"
 ############################################################################
+################ ignore ####################################################
+[ -n "${IGNORE_CATEGORY}" ] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" "\n" <<< "${IGNORE_CATEGORY}"`")"
+[ -n "${IGNORE_PN}" ] && IGNORE_PN="$(sed -e '/^$/d' -e 's/^/.*\//g' <<< "`tr "[:space:]" "\n" <<< "${IGNORE_PN}"`")"
+IGNORE="${IGNORE_CATEGORY}
+${IGNORE_PN}"
+IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
+############################################################################
 ################ profile ###################################################
 cd $(readlink /etc/make.profile | sed -e 's|..||')
 for path in `cat parent`;do
@@ -281,6 +288,7 @@ fi
 not_installed_founded(){
 not_if(){
 atoms="$(awk '{print $1}' <<< "`grep -v "^#" < ${package}`")"
+[ -n "${IGNORE}" ] && atoms="$(grep -v "${IGNORE}" <<< "${atoms}")"
 echo -e "${underline}Checking${restore} ${contrast}$package${restore}"
 if [ -n "${atoms}" ];then
 	while read atom;do
@@ -404,7 +412,9 @@ done
 env_not_installed(){
 for x in "env" "env.d";do
 	files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f 2>/dev/null| cut -d\/ -f5-)"
+	[ -n "${IGNORE}" ] && files="$(grep -v "${IGNORE}" <<< "${files}")"
 	dirs="$(find ${PORT_ETC}/${x}/ -type d 2>/dev/null)"
+	[ -n "${IGNORE}" ] && dirs="$(grep -v "${IGNORE}" <<< "${dirs}")"
 	[[ -n "${files}" || -n "${dirs}" ]] || break
 	
 	while read file;do
@@ -508,12 +518,16 @@ check_uses(){
 			sed -e "s|^${atom} *$||" -e '/^$/d' -i "${file}" 2>/dev/null
 			eend $? 2>/dev/null
 		fi
-	done < "${file}"
+	done <<< "$(grep -v "${IGNORE}" < "${file}")"
 	eend $? 2>/dev/null
 }
 if [ -f "${PORT_ETC}/package.use" ];then
 	file="${PORT_ETC}/package.use"
-	atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+	if [ -n "${IGNORE}" ];then
+		atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}"`)"
+	else
+		atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+	fi
 	check_uses;
 elif [ -d "${PORT_ETC}/package.use" ];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do

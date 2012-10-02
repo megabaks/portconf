@@ -307,7 +307,7 @@ if [ -n "${atoms}" ];then
 			else
 				full_ver="${ver}"
 			fi
-			[[ "${category}" == "(null)" ]] && continue
+			[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
 			if [ -n "${rev}" ] && [ -z "${slot}" ] && `grep -q \: <<< "${rev}"`;then
 				slot="${rev}"
 			fi
@@ -421,6 +421,7 @@ for x in "env" "env.d";do
 		atom="$(qatom "${file}")"
 		atom="$(sed -e '/^$/d' <<< "${atom}")"
 		while read category pn ver rev slot;do
+			[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
 			[ "${ver}" == "(null)" ] && ver="${ver//(null)/}"
 			if [ -n "${rev}" ] && ! `grep -q \: <<< "${rev}"`;then
 				full_ver="${ver}-${rev}"
@@ -554,7 +555,8 @@ eend $? 2>/dev/null
 not_found(){
 	TRASH="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>/dev/null)"
 	while read package;do
-		incorrect="$(echo -e "${TRASH}" | tr "\n" "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'| tr "%" "\n" | sed -e '/^$/d' )"
+		incorrect="$(echo -e "${TRASH}" | tr "\n" "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
+		tr "%" "\n" | sed -e '/^$/d' | grep -v "${IGNORE}")"
 		if [[ -n "${incorrect}" && -f "${package}" ]];then
 			echo -e "${underline}Removing incorrect from${restore} ${contrast}${package}${restore}:"
 			while read line;do
@@ -669,18 +671,18 @@ echo -e \
 "Usage: portconf [OPTION] [OPTION]…[OPTION]
 available OPTIONS:
 --help/-h/-?/h:        This help.
---restore/-r:          Rolling up /etc/portage to one of the available states.
+--restore/-r:          Rolling up /etc/portage to one of available states.
 --backup/-b:           Create backup for current /etc/portage state.(enabled in all follow options)
 --sort/-s:             Sort entries alphabetically.
 --use-sort/-us:        Sort useflags.
 --use-invalid/-ui:     Delete invalid or global enabled useflags from package.use.
 --use-make/-um:        Delete profile enabled useflags from make.conf.
---use-full/-uf:        Analog '-us -ui -um'.
+--use-full/-uf:        An analog '-us -ui -um'.
 --trash/-t:            Delete not_founded/not_installed entries.
 --force-trash/-ft:     Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments/-c:      Delete lines starting with comment.
 --rm-all-comments/-ac: Delete all comments.
---full/-f:             Analog '-s -t -uf'
+--full/-f:             An analog '-s -t -uf'
 --files-2-dirs/-f2d:   Converting package.* files to directories(comments will be removed).
 --dirs-2-files/-d2f:   Converting package.* dirs to files.
 

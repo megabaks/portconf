@@ -468,7 +468,10 @@ done
 ############################################################################
 ################ incorrect uses ############################################
 invalid_uses(){
-GLOBAL="$(echo -e "${PROFILE}" "${USE}"| tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
+	for opt in ${USE};do
+		GLOBAL+=" $(echo ${PROFILE} ${USE} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+	done
+	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" "\n" | sort -u)"
 ############################################################################
 check_uses(){
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}:"
@@ -494,7 +497,7 @@ check_uses(){
 			fi
 		done
 
-		incorrect_use="$(echo	${incorrect_use} | tr "[:space:]" "\n" | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
+		incorrect_use="$(echo ${incorrect_use} | tr "[:space:]" "\n" | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
 		if [ -n "${incorrect_use}" ];then
 			while read trash;do
 				echo -e "Global or invalid use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"

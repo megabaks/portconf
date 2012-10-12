@@ -234,7 +234,7 @@ sort_uses(){
 				Yes | YES | yes | Y | y | "" )
 					mv "${striped}" "${file}" 2>/dev/null
 					eend 0 2>/dev/null
-					exit 0;;
+					break;;
 				No | NO | no | N | n )
 					rm "${striped}"
 					break;;

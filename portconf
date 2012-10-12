@@ -730,41 +730,41 @@ for opt in ${@};do
 case "${opt}" in
 --restore | -r )
 	restore
-	exit 0;;
+	;;
 --backup | -b )
 	backup
-	exit 0;;
+	;;
 --sort | -s )
 	backup;
 	sort_uniq_files
-	exit 0;;
+	;;
 --use-sort | -us )
 	backup;
 	sort_use_file
-	exit 0;;
+	;;
 --use-invalid | -ui )
 	eix_check;
 	backup;
 	invalid_uses
-	exit 0;;
+	;;
 --use-make | -um )
 	backup;
 	use_makeconf
-	exit 0;;
+	;;
 --use-full | -uf )
 	eix_check;
 	backup;
 	sort_use_file;
 	invalid_uses;
 	use_makeconf
-	exit 0;;
+	;;
 --trash | -t )
 	eix_check;
 	backup;
 	not_found;
 	env_not_installed;
 	not_installed_founded
-	exit 0;;
+	;;
 --force-trash | -ft )
 	eix_check;
 	backup;
@@ -772,15 +772,15 @@ case "${opt}" in
 	env_not_installed;
 	force_not_installed="1";
 	not_installed_founded
-	exit 0;;
+	;;
 --rm-comments | -c )
 	backup;
 	rm_comments
-	exit 0;;
+	;;
 --rm-all-comments | -ac )
 	backup;
 	rm_all_comments
-	exit 0;;
+	;;
 --full | -f )
 	eix_check;
 	backup;
@@ -791,17 +791,17 @@ case "${opt}" in
 	sort_use_file;
 	invalid_uses;
 	use_makeconf
-	exit 0;;
+	;;
 --files-2-dirs | -f2d )
 	backup;
 	f_to_d
-	exit 0;;
+	;;
 --dirs-2-files | -d2f )
 	backup;
 	d_to_f
-	exit 0;;
+	;;
 --help | -h | -? | h )
 	help_pc;
-	exit 0;;
+	;;
 esac
 done

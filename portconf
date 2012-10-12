@@ -218,7 +218,31 @@ sort_uses(){
 	done < "${tmp_file}"
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
 	rm "${tmp_file}" 2>/dev/null
-	mv "${striped}" "${file}" 2>/dev/null
+	my_diff="$(diff -Nau0 "${file}" "${striped}")"
+	if [ -n "${my_diff}" ];then
+		while read line;do
+			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}";then
+				grep -q "^-" <<< "${line}" && full_diff+="${red}${line}${restore}\n"
+				grep -q "^+" <<< "${line}" && full_diff+="${green}${line}${restore}\n"
+			fi
+		done <<< "${my_diff}"
+		echo -e "${full_diff%\\n}"
+		echo "========="
+		echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";
+		while read x;do
+			case ${x} in
+				Yes | YES | yes | Y | y | "" )
+					mv "${striped}" "${file}" 2>/dev/null
+					eend 0 2>/dev/null
+					exit 0;;
+				No | NO | no | N | n )
+					rm "${striped}"
+					break;;
+				* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+					continue;;
+			esac
+		done
+	fi
 	eend $? 2>/dev/null
 } 2>/dev/null
 if [ -f "${PORT_ETC}/package.use" ];then

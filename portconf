@@ -27,36 +27,19 @@ ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ############################################################################
 ################ profile ###################################################
-cd $(readlink /etc/make.profile | sed -e 's|\.\.||')
-for path in `cat parent`;do
-	[ -f "$path/make.defaults" ] && source $path/make.defaults
-	PROFILE="${PROFILE} ${USE}"
-	if [ -f "$path/parent" ];then
-		for path2 in `cat $path/parent`;do
-			[ -f "$path/$path2/make.defaults" ] && source $path/$path2/make.defaults
-			PROFILE="${PROFILE} ${USE}"
-			if [ -f "$path/$path2/parent" ];then
-				for path3 in `cat $path/$path2/parent`;do
-					[ -f "$path/$path2/$path3/make.defaults" ] && source $path/$path2/$path3/make.defaults
-					PROFILE="${PROFILE} ${USE}"
-					if [ -f "$path/$path2/$path3/parent" ];then
-						for path4 in `cat $path/$path2/$path3/parent`;do
-							[ -f "$path/$path2/$path3/$path4/make.defaults" ] && source $path/$path2/$path3/$path4/make.defaults
-							PROFILE="${PROFILE} ${USE}"
-							if [ -f "$path/$path2/$path3/$path4/parent" ];then
-								for path5 in `cat $path/$path2/$path3/$path4/parent`;do
-									[ -f "$path/$path2/$path3/$path4/$path5/make.defaults" ] && source $path/$path2/$path3/$path4/$path5/make.defaults
-									PROFILE="${PROFILE} ${USE}"
-								done
-							fi
-						done
-					fi
-				done
-			fi
-		done
-	fi
-done
-PROFILE="$(echo -e "${PROFILE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
+profile() {
+        local use;
+        local path;
+        [ -f "$1/make.defaults" ] && source "$1/make.defaults"
+        use="$USE"
+        if [ -f "$1/parent" ]; then
+                for path in `cat $1/parent`;do
+                        use="$use $(profile "$1/$path")"
+                done
+        fi
+        echo $use
+}
+PROFILE="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" "\n" | sort -u)"
 ############################################################################
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null

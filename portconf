@@ -167,11 +167,11 @@ diff_ask(){
 					Yes | YES | yes | Y | y | "" )
 						mv "${2}" "${1}" 2>/dev/null
 						unset my_diff
-						eend 0 2>/dev/null
+						return 0
 						break;;
 					No | NO | no | N | n )
 						unset my_diff
-						eend 0 2>/dev/null
+						return 0
 						break;;
 					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
 						continue;;
@@ -180,10 +180,11 @@ diff_ask(){
 		else
 			mv "${2}" "${1}" 2>/dev/null
 			unset my_diff
-			eend 0 2>/dev/null
+			return 0
 		fi
 	fi
 	rm "${2}" 2>/dev/null
+	return 0
 }
 ############################################################################
 ################ sort_packages #############################################
@@ -203,7 +204,7 @@ sort_uniq_files(){
 		unset header
 		echo "$(sort -u <<< "`grep -v "^#" < "${package}"`")" >> "${tmp_sort}"
 		sed -e '/^$/d' -i ${tmp_sort}
-		mv "${tmp_sort}" "${package}"
+		diff_ask "${package}" "${tmp_sort}"
 		eend $? 2>/dev/null
 	done
 }
@@ -211,7 +212,10 @@ sort_uniq_files(){
 ################ rm_comments ###############################################
 rm_comments(){
 	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
-		sed -e "s|^#.*||g" -e '/^$/d' -i ${package}
+		tmp_package="/tmp/${package##*/}"
+		cp "${package}" "${tmp_package}"
+		sed -e "s|^#.*||g" -e '/^$/d' -i ${tmp_package}
+		diff_ask "${package}" "${tmp_package}"
 	done
 	eend $? 2>/dev/null
 }
@@ -219,7 +223,10 @@ rm_comments(){
 ################ rm_all_comments ###########################################
 rm_all_comments(){
 	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
-		sed -e "s|#.*||g" -e '/^$/d' -i ${package}
+		tmp_package="/tmp/${package##*/}"
+		cp "${package}" "${tmp_package}"
+		sed -e "s|#.*||g" -e '/^$/d' -i ${tmp_package}
+		diff_ask "${package}" "${tmp_package}"
 	done
 	eend $? 2>/dev/null
 }
@@ -290,19 +297,9 @@ fi
 ################ not_installed #############################################
 ver_diff(){
 check="$(versionsort ${1} ${2} | tail -n1)"
-
-	if [[ "${check}" == "${1}" && "${check}" != "${2}" ]];then
-		echo 1 # ${1} > ${2}
-		return
-	fi
-	if [[ "${check}" == "${2}" && "${check}" != "${1}" ]];then
-		echo 2 # ${2} > ${1}
-		return
-	fi
-	if [[ "${check}" == "${1}" && "${check}" == "${2}" ]];then
-		echo 0 # ${1} == ${2}
-		return
-	fi
+	[[ "${check}" == "${1}" && "${check}" != "${2}" ]] && echo 1 # ${1} > ${2}
+	[[ "${check}" == "${2}" && "${check}" != "${1}" ]] && echo 2 # ${2} > ${1}
+	[[ "${check}" == "${1}" && "${check}" == "${2}" ]] && echo 0 # ${1} == ${2}
 }
 ######################################
 founded(){
@@ -619,45 +616,71 @@ eend $? 2>/dev/null
 ################ not_found #################################################
 not_found(){
 	TRASH="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>/dev/null)"
-	while read package;do
+	for package in `ls -d1 ${PORT_ETC}/package* | grep -v "~"`;do
 		incorrect="$(echo -e "${TRASH}" | tr "\n" "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
 		tr "%" "\n" | sed -e '/^$/d' | grep -v "${IGNORE}")"
 		if [[ -n "${incorrect}" && -f "${package}" ]];then
+			tmp_package="/tmp/${package##*/}"
+			cp "${package}" "${tmp_package}"
 			echo -e "${underline}Removing incorrect from${restore} ${contrast}${package}${restore}:"
 			while read line;do
-				echo -e "${red}removing${restore} ${line}"
+				echo -e "${red}Incorrect:${restore} ${line}"
 				line="${line//'*'/\*}"
-				sed -e "s|$line||" -e 's/[ \t]*$//' -e '/^$/d' -i ${package} 2>/dev/null
+				sed -e "s|$line||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package} 2>/dev/null
 				eend $? 2>/dev/null
 			done <<< "${incorrect}"
+			diff_ask "${package}" "${tmp_package}"
 		elif [[ -n "${incorrect}" && -d "${package}" ]];then
 			echo -e "${underline}Removing incorrect from${restore} ${contrast}${package}${restore}:"
-			while read line;do
-				files="$(grep -RH "${line//'*'/\*}" "${package}"/ | awk -F \: '{print $1}')"
-				while read file;do
-					echo -e "${red}removing${restore} ${line}"
-					sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${file}
+			IFS='
+'
+			for line in ${incorrect};do
+				for file in `grep -RH "${line//'*'/\*}" "${package}"/ | awk -F \: '{print $1}'`;do
+					tmp_file="/tmp/${file##*/}"
+					cp "${file}" "${tmp_file}"
+					echo -e "${red}Incorrect:${restore} ${line}"
+					sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_file}
+					diff_ask "${file}" "${tmp_file}"
 					eend $? 2>/dev/null
-				done <<< "${files}"
-			done <<< "${incorrect}"
+				done
+			done
+			unset IFS
 		fi
-	done <<< "`ls -d1 ${PORT_ETC}/package* | grep -v "~"`"
+	done
 
-	while read string;do
+	INVALID="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>&1 | grep "Invalid.*\'.*\'" | grep -v '\.\.\.' | sort -u)"
+IFS='
+'
+	for string in ${INVALID};do
 		[ -z "${string}" ] && break
-		unset line file
 		file="$(awk -F ':' '{print $1}' <<< "${string}")"
 		file="${file##* }"
 		file="${file//[[:space:]]/}"
+
 		line="$( awk -F ':' '{print $2}' <<< "${string}")"
 		line="${line//\'/}"
-		echo -e "${red}removing invalid atom${restore} ${line}"
+		echo -e "${red}Incorrect:${restore} ${line}"
 		line="${line//'*'/\*}"
 		line="${line#[[:space:]]}"
-		sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${file}
+
+		if [[ -n "${line}" && -f "${file}" ]];then
+			tmp_file="/tmp/${file##*/}"
+			cp "${file}" "${tmp_file}"
+			sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${tmp_file}
+			diff_ask "${file}" "${tmp_file}"
+		elif [[ -n "${line}" && -d "${file}" ]];then
+			for package in `grep -RH "${line//'*'/\*}" "${file}"/ | awk -F \: '{print $1}'`;do
+					tmp_package="/tmp/${package##*/}"
+					cp "${package}" "${tmp_package}"
+					echo -e "${red}Incorrect:${restore} ${line}"
+					sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package}
+					diff_ask "${package}" "${tmp_package}"
+					eend $? 2>/dev/null
+			done
+		fi
 		eend $? 2>/dev/null
-		INVALID="${INVALID/$line/}"
-	done <<< "`LANG=en eix -Tt --xml --end "Hello, LOR" 2>&1 | grep "Invalid.*\'.*\'" | sort -u`"
+	done
+	unset IFS
 }
 ############################################################################
 ################ profile's uses in make.conf ###############################

@@ -27,7 +27,7 @@ ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ############################################################################
 ################ profile ###################################################
-cd $(readlink /etc/make.profile | sed -e 's|..||')
+cd $(readlink /etc/make.profile | sed -e 's|\.\.||')
 for path in `cat parent`;do
 	[ -f "$path/make.defaults" ] && source $path/make.defaults
 	PROFILE="${PROFILE} ${USE}"

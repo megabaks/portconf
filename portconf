@@ -148,7 +148,7 @@ restore(){
 ############################################################################
 ################ diff_ask ##################################################
 diff_ask(){
-	my_diff="$(diff -Nau0 "${1}" "${2}")"
+	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
 	if [ -n "${my_diff}" ];then
 		while read line;do
 			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}";then
@@ -667,15 +667,18 @@ use_makeconf(){
 echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
 USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | grep -v "^-" | sort -u | sed -e '/^$/d')"
 
+tmp_file="${makefile##*/}"
+cp "${makefile}" "${tmp_file}"
 while read use;do
 	if [[ -n ${use} ]];then
 		if `grep -q "^${use}$" <<< "${USE}"`;then
-			echo -e "Twice enabled: ${green}${use}${restore}"
-			sed -e "s|\<${use}\>||" -i ${makefile}
+			echo -e "${red}Twice enabled: ${green}${use}${restore}"
+			sed -e "s|\<${use}\>||" -i ${tmp_file}
 			eend $? 2>/dev/null
 		fi
 	fi
 done <<< "${PROFILE}"
+diff_ask "${makefile}" "${tmp_file}"
 eend $? 2>/dev/null
 }
 ############################################################################

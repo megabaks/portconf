@@ -168,15 +168,12 @@ diff_ask(){
 						mv "${2}" "${1}" 2>/dev/null
 						unset my_diff
 						eend 0 2>/dev/null
-						return 0
 						break;;
 					No | NO | no | N | n )
 						unset my_diff
 						eend 0 2>/dev/null
-						return 0
 						break;;
 					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
-						return 1
 						continue;;
 				esac
 			done
@@ -184,7 +181,6 @@ diff_ask(){
 			mv "${2}" "${1}" 2>/dev/null
 			unset my_diff
 			eend 0 2>/dev/null
-			return 0
 		fi
 	fi
 	rm "${2}" 2>/dev/null

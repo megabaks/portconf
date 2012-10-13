@@ -134,36 +134,46 @@ diff_ask(){
 	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
 	if [ -n "${my_diff}" ];then
 		while read line;do
-			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}";then
-				grep -q "^-" <<< "${line}" && full_diff+="${red}${line}${restore}\n"
-				grep -q "^+" <<< "${line}" && full_diff+="${green}${line}${restore}\n"
+			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@' <<< "${line}";then
+				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
+				plus="$(sed -n "/${string}/{=}" < "${2}")"
+				minus="$(sed -n "/${string}/{=}" < "${1}")"
+				grep -q "^-" <<< "${line}" && full_diff+="${minus}\t:${red}${line}${restore}\n"
+				grep -q "^+" <<< "${line}" && full_diff+="${plus}\t:${green}${line}${restore}\n"
 			fi
+			unset plus minus
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
 		echo -e "${full_diff%\\n}"
 		echo "###############################################"
-		echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";
-		if [ -z "${yes}" ];then
+		if [[ -z "${yes}" && -z "${pretend}" ]];then
+			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 			while read x;do
 				case ${x} in
 					Yes | YES | yes | Y | y | "" )
 						mv "${2}" "${1}" 2>/dev/null
-						unset my_diff
+						unset full_diff
 						return 0
 						break;;
 					No | NO | no | N | n )
-						unset my_diff
+						unset full_diff
+						rm "${2}" 2>/dev/null
 						return 0
 						break;;
 					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
 						continue;;
 				esac
 			done
-		else
+		elif [[ -n "${yes}" && -z "${pretend}" ]];then
 			mv "${2}" "${1}" 2>/dev/null
-			unset my_diff
+			unset full_diff
 			return 0
+		elif [[ -z "${yes}" && -n "${pretend}" ]];then
+			unset full_diff
+			rm "${2}" 2>/dev/null
+			return 0
+			break
 		fi
 	fi
 	rm "${2}" 2>/dev/null
@@ -174,7 +184,7 @@ diff_ask(){
 sort_uniq_files(){
 	tmp_sort="/tmp/package.sort"
 	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
-		echo -e "${underline}Processing${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
+		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
 		while read line;do
 			if `grep -q "^#" <<< "${line}"`;then
 				header+="${line}\n"
@@ -187,7 +197,7 @@ sort_uniq_files(){
 		unset header
 		echo "$(sort -u <<< "`grep -v "^#" < "${package}"`")" >> "${tmp_sort}"
 		sed -e '/^$/d' -i ${tmp_sort}
-		diff_ask "${package}" "${tmp_sort}"
+		diff_ask "${package}" "${tmp_sort}" "sorted"
 		eend $? 2>/dev/null
 	done
 }
@@ -678,7 +688,7 @@ cp "${makefile}" "${tmp_file}"
 while read use;do
 	if [[ -n ${use} ]];then
 		if `grep -q "^${use}$" <<< "${USE}"`;then
-			echo -e "${red}Twice enabled: ${green}${use}${restore}"
+			echo -e "Twice enabled: ${red}${use}${restore}"
 			sed -e "s|\<${use}\>||" -i ${tmp_file}
 			eend $? 2>/dev/null
 		fi
@@ -766,7 +776,8 @@ OPTIONS must be separated by SPACE."
 ############################################################################
 ################ run_it ####################################################
 grep -q -e " \--yes\>" -e " \-y\>" <<< " ${@}" && yes="1"
-opts="$(sed -e 's| --yes\>||g' -e 's| -y\>||g' <<< " ${@}")"
+grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${@}" && pretend="1"
+opts="$(sed -e 's| --yes\>||g' -e 's| -y\>||g' -e 's| --pretend\>||g' -e 's| -p\>||g' <<< " ${@}")"
 for opt in ${opts};do
 case "${opt}" in
 --restore | -r )
@@ -804,7 +815,7 @@ case "${opt}" in
 	backup;
 	not_found;
 	env_not_installed;
-	not_installed_founded
+#	not_installed_founded
 	;;
 --force-trash | -ft )
 	eix_check;
@@ -828,7 +839,7 @@ case "${opt}" in
 	sort_uniq_files;
 	not_found;
 	env_not_installed;
-	not_installed_founded;
+#	not_installed_founded;
 	sort_use_file;
 	invalid_uses;
 	use_makeconf

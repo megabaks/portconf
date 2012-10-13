@@ -767,7 +767,6 @@ for opt in ${opts};do
 		backup;
 		not_found;
 		env_not_installed;
-	#	not_installed_founded;
 		empty_files;
 		;;
 	--force-trash | -ft )
@@ -792,7 +791,6 @@ for opt in ${opts};do
 		sort_uniq_files;
 		not_found;
 		env_not_installed;
-	#	not_installed_founded;
 		sort_use_file;
 		invalid_uses;
 		use_makeconf;

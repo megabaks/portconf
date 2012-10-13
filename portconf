@@ -624,16 +624,19 @@ use_makeconf(){
 [ -f "/etc/make.conf" ] && makefile="/etc/make.conf"
 [ -f "${PORT_ETC}/make.conf" ] && makefile="${PORT_ETC}/make.conf"
 echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
-USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | grep -v "^-" | sort -u | sed -e '/^$/d')"
+USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
 
-tmp_file="${makefile##*/}"
+tmp_file="/tmp/${makefile##*/}"
 cp "${makefile}" "${tmp_file}"
 while read use;do
-	if [[ -n ${use} ]];then
-		if `grep -q "^${use}$" <<< "${USE}"`;then
-			echo -e "Twice enabled: ${red}${use}${restore}"
-			sed -e "s|\<${use}\>||" -i ${tmp_file}
-			eend $? 2>/dev/null
+	flag="${use#-}"
+	if [[ -n ${flag} ]];then
+		if grep -q "^${flag}$" <<< "${USE}" && grep -q "^${flag}$" <<< "${PROFILE}";then
+			echo -e "Twice defined: ${red}${use}${restore}"
+			sed -e "s|\<${flag}\>||" -i ${tmp_file}
+		elif grep -q "^\-${flag}$" <<< "${USE}" && grep -q "^\-${flag}$" <<< "${PROFILE}";then
+			echo -e "Twice defined: ${red}${use}${restore}"
+			sed -e "s|\-${flag}\>||" -i ${tmp_file}
 		fi
 	fi
 done <<< "${PROFILE}"
@@ -710,8 +713,8 @@ available OPTIONS:
 --backup, -b:           Create backup for current /etc/portage state.(enabled in all follow options)
 --sort, -s:             Sort entries alphabetically.
 --use-sort, -us:        Sort useflags.
---use-invalid, -ui:     Delete invalid or global enabled useflags from package.use.
---use-make, -um:        Delete profile enabled useflags from make.conf.
+--use-invalid, -ui:     Delete invalid or global defined useflags from package.use.
+--use-make, -um:        Delete profile defined useflags from make.conf.
 --use-full, -uf:        An analog '-us -ui -um'.
 --trash, -t:            Delete not_founded/not_installed entries.
 --force-trash, -ft:     Delete all not_installed entries.(exclude package.mask file/dir)

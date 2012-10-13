@@ -524,7 +524,6 @@ if [ -f "${PORT_ETC}/package.use" ];then
 		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
 		[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
 	fi
-	atoms="$(sed -e '/^[:space:]$/d' -e '/^$/d' <<< "${atoms}")"
 	check_uses;
 	diff_ask "${file}" "${tmp_file}"
 elif [ -d "${PORT_ETC}/package.use" ];then

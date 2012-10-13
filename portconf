@@ -770,6 +770,7 @@ available OPTIONS:
 --files-2-dirs, -f2d:   Converting package.* files to directories(comments will be removed).
 --dirs-2-files, -d2f:   Converting package.* dirs to files.
 --yes, -y:              Auto answer (Yes).
+--pretend, -p           Check only.
 
 OPTIONS must be separated by SPACE."
 }

@@ -197,7 +197,7 @@ sort_uniq_files(){
 		unset header
 		echo "$(sort -u <<< "`grep -v "^#" < "${package}"`")" >> "${tmp_sort}"
 		sed -e '/^$/d' -i ${tmp_sort}
-		diff_ask "${package}" "${tmp_sort}" "sorted"
+		diff_ask "${package}" "${tmp_sort}"
 		eend $? 2>/dev/null
 	done
 }

@@ -698,6 +698,34 @@ diff_ask "${makefile}" "${tmp_file}"
 eend $? 2>/dev/null
 }
 ############################################################################
+################ empty files ###############################################
+empty_files(){
+	for target in `find ${PORT_ETC}/package* -type f`;do
+		if [[ ! -s "${target}" && -z "${yes}" && -z "${pretend}" ]];then
+			echo -ne "${contrast}Remove empty file${restore} ${green}${target}${restore} ? [${green}Yes${restore}/${red}No${restore}] "
+			while read x;do
+				case ${x} in
+					Yes | YES | yes | Y | y | "" )
+						rm ${target} 2>/dev/null
+						break;;
+					No | NO | no | N | n )
+						break;;
+					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+						continue;;
+				esac
+			done
+			eend $? 2>/dev/null
+		elif [[ ! -s "${target}" && -n "${yes}" && -z "${pretend}" ]];then
+			echo -e "${contrast}Removing empty file${restore} ${green}${target}${restore}"
+			rm ${target} 2>/dev/null
+			eend $? 2>/dev/null
+		elif [[ ! -s "${target}" && -z "${yes}" && -n "${pretend}" ]];then
+			echo -e "${contrast}Empty file${restore} ${green}${target}${restore}"
+			eend 0 2>/dev/null
+		fi
+	done
+}
+############################################################################
 ################ package.* files 2 dirs ####################################
 f_to_d(){
 	while read package;do
@@ -782,18 +810,18 @@ opts="$(sed -e 's| --yes\>||g' -e 's| -y\>||g' -e 's| --pretend\>||g' -e 's| -p\
 for opt in ${opts};do
 case "${opt}" in
 --restore | -r )
-	restore
+	restore;
 	;;
 --backup | -b )
-	backup
+	backup;
 	;;
 --sort | -s )
 	backup;
-	sort_uniq_files
+	sort_uniq_files;
 	;;
 --use-sort | -us )
 	backup;
-	sort_use_file
+	sort_use_file;
 	;;
 --use-invalid | -ui )
 	eix_check;
@@ -809,14 +837,15 @@ case "${opt}" in
 	backup;
 	sort_use_file;
 	invalid_uses;
-	use_makeconf
+	use_makeconf;
 	;;
 --trash | -t )
 	eix_check;
 	backup;
 	not_found;
 	env_not_installed;
-#	not_installed_founded
+#	not_installed_founded;
+	empty_files;
 	;;
 --force-trash | -ft )
 	eix_check;
@@ -824,15 +853,16 @@ case "${opt}" in
 	not_found;
 	env_not_installed;
 	force_not_installed="1";
-	not_installed_founded
+	not_installed_founded;
+	empty_files;
 	;;
 --rm-comments | -c )
 	backup;
-	rm_comments
+	rm_comments;
 	;;
 --rm-all-comments | -ac )
 	backup;
-	rm_all_comments
+	rm_all_comments;
 	;;
 --full | -f )
 	eix_check;
@@ -843,15 +873,16 @@ case "${opt}" in
 #	not_installed_founded;
 	sort_use_file;
 	invalid_uses;
-	use_makeconf
+	use_makeconf;
+	empty_files;
 	;;
 --files-2-dirs | -f2d )
 	backup;
-	f_to_d
+	f_to_d;
 	;;
 --dirs-2-files | -d2f )
 	backup;
-	d_to_f
+	d_to_f;
 	;;
 --help | -h | -? | h )
 	help_pc;

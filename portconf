@@ -503,7 +503,7 @@ check_uses(){
 			done <<< "${incorrect_use}"
 		fi
 		unset ALL_USE LOCAL USES incorrect_use use
-	done <<< "${atoms}"
+	done <<< `[[ -n "${atoms}" ]] && echo "${atoms}"`
 	while read atom opt;do
 		if [ -n "${atom}" ] && [ -z "${opt}" ];then
 			echo -e "Removing atom: ${green}${atom}${restore}"
@@ -518,10 +518,13 @@ if [ -f "${PORT_ETC}/package.use" ];then
 	tmp_file="/tmp/${file##*/}"
 	cp "${file}" "${tmp_file}"
 	if [ -n "${IGNORE}" ];then
-		atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}"`)"
+		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
+		[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
 	else
-		atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
+		[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
 	fi
+	atoms="$(sed -e '/^[:space:]$/d' -e '/^$/d' <<< "${atoms}")"
 	check_uses;
 	diff_ask "${file}" "${tmp_file}"
 elif [ -d "${PORT_ETC}/package.use" ];then
@@ -531,9 +534,11 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 			tmp_file="/tmp/${file##*/}"
 			cp "${file}" "${tmp_file}"
 			if [ -n "${IGNORE}" ];then
-				atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}"`)"
+				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
+				[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
 			else
-				atoms="$(qatom `awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g'`)"
+				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
+				[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
 			fi
 			check_uses
 			diff_ask "${file}" "${tmp_file}"

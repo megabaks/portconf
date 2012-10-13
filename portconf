@@ -136,8 +136,8 @@ diff_ask(){
 		while read line;do
 			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@' <<< "${line}";then
 				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
-				plus="$(sed -n "/${string}/{=}" < "${2}")"
-				minus="$(sed -n "/${string}/{=}" < "${1}")"
+				[[ -n "${string}" ]] && plus="$(sed -n "/${string}/{=}" < "${2}")" || plus="X"
+				[[ -n "${string}" ]] && minus="$(sed -n "/${string}/{=}" < "${1}")" || minus="X"
 				grep -q "^-" <<< "${line}" && full_diff+="${minus}\t:${red}${line}${restore}\n"
 				grep -q "^+" <<< "${line}" && full_diff+="${plus}\t:${green}${line}${restore}\n"
 			fi
@@ -249,8 +249,7 @@ rm_all_comments(){
 	eend $? 2>/dev/null
 }
 ############################################################################
-################ package.use ###############################################
-sort_use_file(){
+################ sot_uses ##################################################
 sort_uses(){
 	echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 	tmp_file="/tmp/package.use"
@@ -287,7 +286,9 @@ sort_uses(){
 	diff_ask "${file}" "${striped}"
 	eend $? 2>/dev/null
 } 2>/dev/null
-
+############################################################################
+################ package.use ###############################################
+sort_use_file(){
 if [ -f "${PORT_ETC}/package.use" ];then
 	file="${PORT_ETC}/package.use"
 	if [[ -s ${file} ]];then
@@ -565,7 +566,7 @@ not_found(){
 			while read line;do
 				echo -e "${red}Incorrect:${restore} ${line}"
 				line="${line//'*'/\*}"
-				sed -e "s|$line||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package} 2>/dev/null
+				[[ -n "${line}" ]] && sed -e "s|$line||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package} 2>/dev/null
 				eend $? 2>/dev/null
 			done <<< "${incorrect}"
 			diff_ask "${package}" "${tmp_package}"
@@ -578,7 +579,7 @@ not_found(){
 					tmp_file="/tmp/${file##*/}"
 					cp "${file}" "${tmp_file}"
 					echo -e "${red}Incorrect:${restore} ${line}"
-					sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_file}
+					[[ -n "${line}" ]] && sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_file}
 					diff_ask "${file}" "${tmp_file}"
 					eend $? 2>/dev/null
 				done
@@ -606,14 +607,14 @@ IFS='
 		if [[ -n "${line}" && -f "${file}" ]];then
 			tmp_file="/tmp/${file##*/}"
 			cp "${file}" "${tmp_file}"
-			sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${tmp_file}
+			[[ -n "${line}" ]] && sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${tmp_file}
 			diff_ask "${file}" "${tmp_file}"
 		elif [[ -n "${line}" && -d "${file}" ]];then
 			for package in `grep -RH "${line//'*'/\*}" "${file}"/ | awk -F \: '{print $1}'`;do
 					tmp_package="/tmp/${package##*/}"
 					cp "${package}" "${tmp_package}"
 					echo -e "${red}Incorrect:${restore} ${line}"
-					sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package}
+					[[ -n "${line}" ]] && sed -e "s|${line//'*'/\*}||" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package}
 					diff_ask "${package}" "${tmp_package}"
 					eend $? 2>/dev/null
 			done

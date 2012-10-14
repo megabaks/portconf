@@ -387,9 +387,37 @@ for x in `find ${PORT_ETC}/package* -type f`;do
 done
 }
 ############################################################################
+################ package.env workaround ####################################
+package_env(){
+for package in `find ${PORT_ETC}/ -name "package.*" | grep -v "~"`;do
+	if [ "${package##*/}" == "package.env" ];then
+		if [ -f "${package}" ];then
+			while read line;do
+				atom="${line%% *}"
+				for conf in ${line#${atom} };do
+					[ -f "${PORT_ETC}/env/${conf}" ] && IGNORE="${IGNORE}
+${conf}"
+				done
+			done < "${package}"
+		elif [ -d "${package}" ];then
+			for subpackage in `find "${package}" -type f | grep -v "~"`;do
+				while read line;do
+					atom="${line%% *}"
+					for conf in ${line#${atom} };do
+						[ -f "${PORT_ETC}/env/${conf}" ] && IGNORE="${IGNORE}
+${conf}"
+					done
+				done < "${subpackage}"
+			done
+		fi
+	fi
+done
+}
+############################################################################
 ################ env not_installed #########################################
 env_not_installed(){
 echo -e "${underline}Looking not installed in ${restore} ${contrast}${PORT_ETC}/env${restore}"
+package_env;
 for x in "env" "env.d";do
 	files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f 2>/dev/null| cut -d\/ -f5-)"
 	[ -n "${IGNORE}" ] && files="$(grep -v "${IGNORE}" <<< "${files}")"

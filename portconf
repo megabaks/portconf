@@ -493,11 +493,18 @@ invalid_uses(){
 check_uses(){
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}:"
 	while read category pn ver slot;do
+	#### broken overlays workaround ####
+		for path in ${PORTDIR};do
+			Q_USE+=" $(PORTDIR="${path}" quse -Ca | grep "${category}/${pn}/" | cut -d" " -f2- | tr -d "+")"
+			rm "${path}/.ebuild.x"
+		done 2>/dev/null
+
 		ALL_USE="$(
 		eix --xml --end "${category}/${pn}"|grep -e iuse -e "use enabled=\"1\"" -e "use enabled=\"0\"" |\
 		sed -e "s|<iuse>||g" -e "s|<use enabled=\"1\">||g" -e "s|<use enabled=\"0\">||g" \
-		-e "s|<iuse default=\"1\">||g" -e "s|</iuse>||g" -e "s|</use>||g" | tr "[:space:]" "\n"|sort -u|sed -e '/^$/d'
+		-e "s|<iuse default=\"1\">||g" -e "s|</iuse>||g" -e "s|</use>||g"
 		)"
+		ALL_USE="$(echo -e "${ALL_USE}" "${Q_USE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
 		LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" "\n" | sort -u)"
 		USES="$(sed -e 's|^-||g' <<< "${LOCAL}")"
 		for use in ${USES};do

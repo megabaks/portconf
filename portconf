@@ -211,7 +211,7 @@ sort_uniq_files(){
 	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
 		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
 
-		all_atoms="$(awk '{print $1}' "${package}" | sort -u)"
+		all_atoms="$(awk '{print $1}' "${package}" | grep -v "^#"| sort -u)"
 		while read atom;do
 			opts="$(grep "^${atom} " "${package}" | uniq | cut -d" " -f2-)"
 			echo "${atom} ${opts//$'\n'/ }" >> "${tmp_sort}"

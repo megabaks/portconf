@@ -491,11 +491,16 @@ invalid_uses(){
 		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
 		rm "${path}/.ebuild.x"
 	done 2>/dev/null
-	
 ############################################################################
 check_uses(){
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}:"
 	while read category pn ver slot;do
+	#### just count
+		tput sc
+		tput civis
+		echo -ne "["; printf "% ${chars}d" $((count--));echo -ne " ]" "atoms left" 2>/dev/null
+		tput rc
+
 		#### broken overlays workaround ####
 		Q_USE+=" $( grep "${category}/${pn}/" <<< "${ALL_Q_USE}" | cut -d" " -f2- | tr -d "+")"
 
@@ -560,7 +565,11 @@ if [ -f "${PORT_ETC}/package.use" ];then
 		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
 		[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 	fi
+	count="$(wc -l <<< "${atoms}")"
+	((count--))
+	chars="$(wc -m <<< "${count}")"
 	check_uses;
+	tput cnorm
 	diff_ask "${file}" "${tmp_file}"
 elif [ -d "${PORT_ETC}/package.use" ];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do
@@ -575,7 +584,11 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
 				[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 			fi
-			check_uses
+			count="$(wc -l <<< "${atoms}")"
+			((count--))
+			chars="$(wc -m <<< "${count}")"
+			check_uses;
+			tput cnorm
 			diff_ask "${file}" "${tmp_file}"
 		else
 			echo -e "${underline}Removing empty file${restore} ${contrast}${f}${restore}"
@@ -586,6 +599,7 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 	done
 fi
 eend $? 2>/dev/null
+tput cnorm
 }
 ############################################################################
 ################ not_found #################################################

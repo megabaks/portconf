@@ -485,15 +485,19 @@ invalid_uses(){
 		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 	done
 	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" "\n" | sort -u)"
+
+	#### broken overlays workaround ####
+	for path in ${PORTDIR};do
+		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
+		rm "${path}/.ebuild.x"
+	done 2>/dev/null
+	
 ############################################################################
 check_uses(){
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}:"
 	while read category pn ver slot;do
-	#### broken overlays workaround ####
-		for path in ${PORTDIR};do
-			Q_USE+=" $(PORTDIR="${path}" quse -Ca | grep "${category}/${pn}/" | cut -d" " -f2- | tr -d "+")"
-			rm "${path}/.ebuild.x"
-		done 2>/dev/null
+		#### broken overlays workaround ####
+		Q_USE+=" $( grep "${category}/${pn}/" <<< "${ALL_Q_USE}" | cut -d" " -f2- | tr -d "+")"
 
 		ALL_USE="$(
 		eix --xml --end "${category}/${pn}"|grep -e iuse -e "use enabled=\"1\"" -e "use enabled=\"0\"" |\
@@ -534,8 +538,8 @@ check_uses(){
 				done <<< "${strings}"
 			done <<< "${incorrect_use}"
 		fi
-		unset ALL_USE LOCAL USES incorrect_use use
-	done <<< `[[ -n "${atoms}" ]] && echo "${atoms}"`
+		unset ALL_USE LOCAL USES incorrect_use use Q_USE
+	done <<< "`[[ -n "${atoms}" ]] && echo -e "${atoms}"`"
 	while read atom opt;do
 		if [ -n "${atom}" ] && [ -z "${opt}" ];then
 			echo -e "Removing atom: ${green}${atom}${restore}"
@@ -551,10 +555,10 @@ if [ -f "${PORT_ETC}/package.use" ];then
 	cp "${file}" "${tmp_file}"
 	if [ -n "${IGNORE}" ];then
 		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
-		[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
+		[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 	else
 		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
-		[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
+		[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 	fi
 	check_uses;
 	diff_ask "${file}" "${tmp_file}"
@@ -566,10 +570,10 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 			cp "${file}" "${tmp_file}"
 			if [ -n "${IGNORE}" ];then
 				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
-				[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
+				[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 			else
 				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g')"
-				[[ -n "${content}" ]] && atoms="$(qatom "${content}")"
+				[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 			fi
 			check_uses
 			diff_ask "${file}" "${tmp_file}"

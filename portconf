@@ -153,6 +153,7 @@ diff_ask(){
 				case ${x} in
 					Yes | YES | yes | Y | y | "" )
 						mv "${2}" "${1}" 2>/dev/null
+						chmod 0644 "${1}"
 						unset full_diff
 						return 0
 						break;;
@@ -167,6 +168,7 @@ diff_ask(){
 			done
 		elif [[ -n "${yes}" && -z "${pretend}" ]];then
 			mv "${2}" "${1}" 2>/dev/null
+			chmod 0644 "${1}"
 			unset full_diff
 			return 0
 		elif [[ -z "${yes}" && -n "${pretend}" ]];then

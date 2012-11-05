@@ -28,16 +28,16 @@ IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ############################################################################
 ################ profile ###################################################
 profile() {
-        local use;
-        local path;
-        [ -f "$1/make.defaults" ] && source "$1/make.defaults"
-        use="$USE"
-        if [ -f "$1/parent" ]; then
-                for path in `cat $1/parent`;do
-                        use="$use $(profile "$1/$path")"
-                done
-        fi
-        echo $use
+	local use;
+	local path;
+	[ -f "$1/make.defaults" ] && source "$1/make.defaults"
+	use="$USE"
+	if [ -f "$1/parent" ]; then
+		for path in `cat $1/parent`;do
+			use="$use $(profile "$1/$path")"
+		done
+	fi
+	echo $use
 }
 PROFILE="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" "\n" | sort -u)"
 ############################################################################
@@ -247,15 +247,14 @@ rm_all_comments(){
 	eend $? 2>/dev/null
 }
 ############################################################################
-################ sot_uses ##################################################
+################ sort_uses #################################################
 sort_uses(){
 	echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 	tmp_file="$(mktemp)"
 	striped="$(mktemp)"
 	PACKAGES="$(awk '{print $1}' ${file} | grep -v '^#.*' | uniq)"
 	for atom in ${PACKAGES};do
-		commented_atom="$(grep "${atom}.*#" ${file} | awk '{print $1}')"
-		comment="$(grep "\<${commented_atom}\>.*#" ${file} | cut -d\# -f2-)"
+		comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 		for option in \
 		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" "\n" | uniq | tr "\n" " ")";do
 			atom_opts+="${option}"
@@ -268,9 +267,9 @@ sort_uses(){
 		done
 		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
 		if [ -n "${comment}" ];then
-			grep -q "${atom} ${uses} #${comment}" "${tmp_file}" || echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
+			echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
 		else
-			grep -q "${atom} ${uses}" "${tmp_file}" || echo "${atom} ${uses}" >> "${tmp_file}"
+			echo "${atom} ${uses}" >> "${tmp_file}"
 		fi
 		unset atom_opts uses
 	done
@@ -309,6 +308,51 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 		fi
 	done
 fi
+}
+############################################################################
+################ sort_keywords #############################################
+sort_keywords(){
+	keys(){
+		echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
+		tmp_file="$(mktemp)"
+		atoms="$(awk '{print $1}' "${file}" | sort -u)"
+		while read atom;do
+			comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
+			keyword="$(grep "${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" |\
+						tr "[:space:]" $'\n' | sed '/^$/d' | tail -n1)"
+			if [[ -n "${comment}" ]];then
+				echo "${atom} ${keyword} #${comment}" >> "${tmp_file}"
+			else
+				echo "${atom} ${keyword}" >> "${tmp_file}"
+			fi
+		done <<< "${atoms}"
+		diff_ask "${file}" "${tmp_file}"
+	}
+
+	for ext in keywords accept_keywords;do
+		package="${PORT_ETC}/package.${ext}"
+		if [[ -f ${package} ]];then
+			file="${package}"
+			if [[ -s ${file} ]];then
+				keys;
+			else
+				echo -e "${underline}Empty file${restore} ${contrast}\'${file}\'${restore}"
+				remove_ask "${file}"
+				eend $? 2>/dev/null
+			fi
+		elif [[ -d ${package} ]];then
+			for file in `find "${package}" -type f`;do
+				if [[ -s ${file} ]];then
+					keys;
+				else
+					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
+					remove_ask "${file}"
+					eend $? 2>/dev/null
+					continue
+				fi
+			done
+		fi
+	done
 }
 ############################################################################
 ################ not_installed #############################################
@@ -772,6 +816,7 @@ available OPTIONS:
 --use-invalid, -ui:     Delete invalid or global defined useflags from package.use.
 --use-make, -um:        Delete profile defined useflags from make.conf.
 --use-full, -uf:        An analog '-us -ui -um'.
+--keys-sort, -ks:       Sort keywords.
 --trash, -t:            Delete not_founded/not_installed entries.
 --force-trash, -ft:     Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments, -c:      Delete lines starting with comment.
@@ -821,6 +866,10 @@ for opt in ${opts};do
 		invalid_uses;
 		use_makeconf;
 		;;
+	--keys-sort | -ks )
+		backup;
+		sort_keywords;
+		;;
 	--trash | -t )
 		eix_check;
 		backup;
@@ -853,6 +902,7 @@ for opt in ${opts};do
 		sort_use_file;
 		invalid_uses;
 		use_makeconf;
+		sort_keywords;
 		empty_files;
 		;;
 	--files-2-dirs | -f2d )

@@ -133,19 +133,20 @@ restore(){
 diff_ask(){
 	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
 	if [ -n "${my_diff}" ];then
+		IFS=$'\n'
 		while read line;do
 			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@' <<< "${line}";then
 				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
 				[[ -n "${string}" ]] && plus="$(sed -n "/${string}/{=}" < "${2}")" || plus="X"
 				[[ -n "${string}" ]] && minus="$(sed -n "/${string}/{=}" < "${1}")" || minus="X"
-				grep -q "^-" <<< "${line}" && full_diff+="${minus}\t:${red}${line}${restore}\n"
-				grep -q "^+" <<< "${line}" && full_diff+="${plus}\t:${green}${line}${restore}\n"
+				grep -q "^-" <<< "${line}" && full_diff+="${minus}\t:${red}${line}${restore}:\n"
+				grep -q "^+" <<< "${line}" && full_diff+="${plus}\t:${green}${line}${restore}:\n"
 			fi
 			unset plus minus
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
-		echo -e "${full_diff%\\n}"
+		echo -e "${full_diff%\\n}" | grep \:
 		echo "###############################################"
 		if [[ -z "${yes}" && -z "${pretend}" ]];then
 			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";

@@ -241,7 +241,7 @@ rm_all_comments(){
 	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
 		tmp_package="$(mktemp)"
 		cp "${package}" "${tmp_package}"
-		sed -e "s|#.*||g" -e '/^$/d' -i ${tmp_package}
+		sed -e "s|#.*||g" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package}
 		diff_ask "${package}" "${tmp_package}"
 	done
 	eend $? 2>/dev/null

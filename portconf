@@ -144,6 +144,7 @@ diff_ask(){
 			fi
 			unset plus minus
 		done <<< "${my_diff}"
+		unset IFS
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
 		echo -e "${full_diff%\\n}" | grep \:
@@ -354,6 +355,7 @@ sort_keywords(){
 			done
 		fi
 	done
+	eend $? 2>/dev/null
 }
 ############################################################################
 ################ not_installed #############################################
@@ -527,17 +529,19 @@ eend $? 2>/dev/null
 ############################################################################
 ################ incorrect uses ############################################
 invalid_uses(){
+	echo -e "${underline}Preparing use flags ${restore}..."
 	FULL="${PROFILE} ${USE}"
 	for opt in ${FULL};do
 		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 	done
 	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" "\n" | sort -u)"
-
+	
 	#### broken overlays workaround ####
 	for path in ${PORTDIR};do
 		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
 		rm "${path}/.ebuild.x"
 	done 2>/dev/null
+	eend $? 2>/dev/null
 ############################################################################
 check_uses(){
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}:"
@@ -751,6 +755,7 @@ empty_files(){
 	for target in `find ${PORT_ETC} -type f`;do
 		[[ ! -s "${target}" || -z "$(grep -v "^#" < "${target}")" ]] && remove_ask "${target}"
 	done
+	eend 0 2>/dev/null
 }
 ############################################################################
 ################ package.* files 2 dirs ####################################

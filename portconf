@@ -529,7 +529,6 @@ eend $? 2>/dev/null
 ############################################################################
 ################ incorrect uses ############################################
 invalid_uses(){
-	echo -e "${underline}Preparing use flags ${restore}..."
 	FULL="${PROFILE} ${USE}"
 	for opt in ${FULL};do
 		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
@@ -538,8 +537,13 @@ invalid_uses(){
 	
 	#### broken overlays workaround ####
 	for path in ${PORTDIR};do
+		tput sc
+		tput civis
+		echo -e "${underline}Preparing use flags${restore}: ${contrast}${path}${restore}" 2>/dev/null
+		tput rc
 		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
 		rm "${path}/.ebuild.x"
+		eend $? 2>/dev/null
 	done 2>/dev/null
 	eend $? 2>/dev/null
 ############################################################################
@@ -620,7 +624,8 @@ if [ -f "${PORT_ETC}/package.use" ];then
 	((count--))
 	chars="$(wc -m <<< "${count}")"
 	check_uses;
-	tput cnorm
+	tput el;
+	tput cnorm;
 	diff_ask "${file}" "${tmp_file}"
 elif [ -d "${PORT_ETC}/package.use" ];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do

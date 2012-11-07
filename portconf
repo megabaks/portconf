@@ -54,6 +54,37 @@ pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:
 profile_uses="$(sort_passed_uses "${pre_profile}")"
 PROFILE="$(tr "[:space:]" $'\n' <<< ${profile_uses})"
 ############################################################################
+################ all_use_all_profiles ######################################
+all_use_all_profiles(){
+	for target in `eselect --brief profile list`;do
+		profile_uses="$(profile "/usr/portage/profiles/${target}")"
+		USEs="$(sort_passed_uses "${profile_uses}")"
+		echo -e "\n${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
+		unset USEs
+	done
+}
+############################################################################
+################ profile_use ###############################################
+profile_use(){
+	PS3=`echo -e "${contrast}Choose number:${restore} "`
+	select target in `eselect --brief profile list`;do
+		profile_uses="$(profile "/usr/portage/profiles/${target}")"
+		USEs="$(sort_passed_uses "${profile_uses}")"
+		echo -e "\n${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
+		unset USEs
+		break
+	done
+}
+############################################################################
+################ current_profile ###########################################
+current_profile(){
+	target="$(readlink /etc/make.profile | sed 's|.*/profiles/||')"
+	profile_uses="$(profile "/usr/portage/profiles/${target}")"
+	USEs="$(sort_passed_uses "${PROFILE}")"
+	echo -e "${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
+	unset USEs
+}
+############################################################################
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null
 [ -f "${PORT_ETC}/make.conf" ] && source ${PORT_ETC}/make.conf 2>/dev/null
@@ -931,6 +962,15 @@ for opt in ${opts};do
 		;;
 	--help | -h | -? | h )
 		help_pc;
+		;;
+	--all-profiles-use | -apu )
+		all_use_all_profiles;
+		;;
+	--profiles-use | -pu )
+		profile_use;
+		;;
+	--current-profile-use | -cpu )
+		current_profile;
 		;;
 	esac
 done

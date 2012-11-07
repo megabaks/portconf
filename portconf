@@ -50,7 +50,7 @@ profile() {
 	fi
 	echo $use
 }
-pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" $'\n' | sort -u)"
+pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'`)"
 profile_uses="$(sort_passed_uses "${pre_profile}")"
 PROFILE="$(tr "[:space:]" $'\n' <<< ${profile_uses})"
 ############################################################################

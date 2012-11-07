@@ -179,21 +179,39 @@ restore(){
 diff_ask(){
 	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
 	if [ -n "${my_diff}" ];then
-		IFS=$'\n'
 		while read line;do
-			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@' <<< "${line}";then
+			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@@' <<< "${line}";then
 				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
-				[[ -n "${string}" ]] && plus="$(sed -n "/${string}/{=}" < "${2}")" || plus="X"
-				[[ -n "${string}" ]] && minus="$(sed -n "/${string}/{=}" < "${1}")" || minus="X"
-				grep -q "^-" <<< "${line}" && full_diff+="${minus}\t:${red}${line}${restore}:\n"
-				grep -q "^+" <<< "${line}" && full_diff+="${plus}\t:${green}${line}${restore}:\n"
+				[[ -n "${string}" ]] && plus="$(cat "${2}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || plus="X"
+				[[ -n "${string}" ]] && minus="$(cat "${1}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || minus="X"
+				for x in ${minus};do
+					[[ "$(sed -n "${x}p" ${1})" == "$(sed -n "${x}p" ${2})" ]] &&\
+					minus="${minus//${x}/}" && minus_exist=" == line ${contrast}${x}${restore}"
+				done
+				minus="${minus# }"
+				minus="${minus% }"
+				for z in ${plus};do
+					[[ "$(sed -n "${z}p" ${1})" == "$(sed -n "${z}p" ${2})" ]] &&\
+					plus="${plus//${z}/}"  && plus_exist=" == line ${contrast}${x}${restore}"
+				done
+				plus="${plus# }"
+				plus="${plus% }"
+				if grep -q "^-" <<< "${line}";then
+					for i in ${minus};do
+						! grep -q "${i}.*:.*${red//\[/\\[}.*:" <<< "${full_diff}" && full_diff+="${i}\t:${red}${line}${restore}: ${minus_exist}\n"
+					done
+				fi
+				if grep -q "^+" <<< "${line}";then
+					for i in ${plus};do
+						! grep -q "${i}.*:.*${green//\[/\\[}.*:" <<< "${full_diff}" && full_diff+="${i}\t:${green}${line}${restore}: ${plus_exist}\n"
+					done
+				fi
 			fi
-			unset plus minus
+			unset plus minus my_exist
 		done <<< "${my_diff}"
-		unset IFS
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
-		echo -e "${full_diff%\\n}" | grep \:
+		echo -e "${full_diff%\\n}" | grep \: #| sort -u
 		echo "###############################################"
 		if [[ -z "${yes}" && -z "${pretend}" ]];then
 			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";
@@ -322,6 +340,7 @@ sort_uses(){
 		[ -z "${opt}" ] && sed -e "s|^${atom} ||" -i "${striped}" 2>/dev/null
 	done < "${tmp_file}"
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
+	sort -u "${striped}" -o "${striped}" 2>/dev/null
 	rm "${tmp_file}" 2>/dev/null
 	diff_ask "${file}" "${striped}"
 	eend $? 2>/dev/null
@@ -369,6 +388,7 @@ sort_keywords(){
 				echo "${atom} ${keyword}" >> "${tmp_file}"
 			fi
 		done <<< "${atoms}"
+		sort -u "${tmp_file}" -o "${tmp_file}" 2>/dev/null
 		diff_ask "${file}" "${tmp_file}"
 	}
 

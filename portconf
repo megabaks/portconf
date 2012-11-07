@@ -862,7 +862,7 @@ available OPTIONS:
 --use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
 --use-make, -um:             Delete profile defined useflags from make.conf.
 --use-full, -uf:             An analog '-us -ui -um'.
---keys-sort, -ks:            Sort keywords.
+--keywords-sort, -ks:        Sort keywords.
 --trash, -t:                 Delete not_founded/not_installed entries.
 --force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments, -c:           Delete lines starting with comment.
@@ -881,68 +881,55 @@ OPTIONS must be separated by SPACE."
 }
 ############################################################################
 ################ run_it ####################################################
+[[ -z "${@}" ]] && help_pc
 grep -q -e " \--yes\>" -e " \-y\>" <<< " ${@}" && yes="1"
 grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${@}" && pretend="1"
 opts="$(sed -e 's| --yes\>||g' -e 's| -y\>||g' -e 's| --pretend\>||g' -e 's| -p\>||g' <<< " ${@}")"
 for opt in ${opts};do
 	case "${opt}" in
-	--restore | -r )
-		restore;
-		;;
-	--backup | -b )
-		backup;
-		;;
+	--restore | -r ) restore;;
+	--backup | -b ) backup;;
 	--sort | -s )
 		backup;
-		sort_uniq_files;
-		;;
+		sort_uniq_files;;
 	--use-sort | -us )
 		backup;
-		sort_use_file;
-		;;
+		sort_use_file;;
 	--use-invalid | -ui )
 		eix_check;
 		backup;
-		invalid_uses
-		;;
+		invalid_uses;;
 	--use-make | -um )
 		backup;
-		use_makeconf
-		;;
+		use_makeconf;;
 	--use-full | -uf )
 		eix_check;
 		backup;
 		sort_use_file;
 		invalid_uses;
-		use_makeconf;
-		;;
-	--keys-sort | -ks )
+		use_makeconf;;
+	--keywords-sort | -ks )
 		backup;
-		sort_keywords;
-		;;
+		sort_keywords;;
 	--trash | -t )
 		eix_check;
 		backup;
 		not_found;
 		env_not_installed;
-		empty_files;
-		;;
+		empty_files;;
 	--force-trash | -ft )
 		eix_check;
 		backup;
 		not_found;
 		env_not_installed;
 		force_not_installed;
-		empty_files;
-		;;
+		empty_files;;
 	--rm-comments | -c )
 		backup;
-		rm_comments;
-		;;
+		rm_comments;;
 	--rm-all-comments | -ac )
 		backup;
-		rm_all_comments;
-		;;
+		rm_all_comments;;
 	--full | -f )
 		eix_check;
 		backup;
@@ -953,27 +940,16 @@ for opt in ${opts};do
 		invalid_uses;
 		use_makeconf;
 		sort_keywords;
-		empty_files;
-		;;
+		empty_files;;
 	--files-2-dirs | -f2d )
 		backup;
-		f_to_d;
-		;;
+		f_to_d;;
 	--dirs-2-files | -d2f )
 		backup;
-		d_to_f;
-		;;
-	--help | -h | -? | h )
-		help_pc;
-		;;
-	--all-profiles-use | -apu )
-		all_use_all_profiles;
-		;;
-	--profiles-use | -pu )
-		profile_use;
-		;;
-	--current-profile-use | -cpu )
-		current_profile;
-		;;
+		d_to_f;;
+	--all-profiles-use | -apu ) all_use_all_profiles;;
+	--profiles-use | -pu ) profile_use;;
+	--current-profile-use | -cpu ) current_profile;;
+	--help | -h | -? | h ) help_pc;;
 	esac
 done

@@ -28,6 +28,7 @@ IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ############################################################################
 ################ profile ###################################################
 profile() {
+	unset USE
 	local use;
 	local path;
 	[ -f "$1/make.defaults" ] && source "$1/make.defaults"
@@ -51,6 +52,8 @@ unset uses
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null
 [ -f "${PORT_ETC}/make.conf" ] && source ${PORT_ETC}/make.conf 2>/dev/null
+MAKE_USES="${USE}"
+unset USE
 [ -z "${PORTDIR}" ] && PORTDIR="/usr/portage"
 [ -n "${PORTDIR_OVERLAY}" ] && PORTDIR="${PORTDIR} ${PORTDIR_OVERLAY}"
 ############################################################################
@@ -536,7 +539,7 @@ eend $? 2>/dev/null
 ############################################################################
 ################ incorrect uses ############################################
 invalid_uses(){
-	FULL="${PROFILE} ${USE}"
+	FULL="${PROFILE} ${MAKE_USES}"
 	for opt in ${FULL};do
 		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 	done
@@ -544,10 +547,8 @@ invalid_uses(){
 	
 	#### broken overlays workaround ####
 	for path in ${PORTDIR};do
-		tput sc
 		tput civis
 		echo -e "${underline}Preparing use flags${restore}: ${contrast}${path}${restore}" 2>/dev/null
-		tput rc
 		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
 		rm "${path}/.ebuild.x"
 		eend $? 2>/dev/null
@@ -741,7 +742,7 @@ use_makeconf(){
 [ -f "/etc/make.conf" ] && makefile="/etc/make.conf"
 [ -f "${PORT_ETC}/make.conf" ] && makefile="${PORT_ETC}/make.conf"
 echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
-USE="$(echo -e "${USE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
+USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
 
 tmp_file="$(mktemp)"
 cp "${makefile}" "${tmp_file}"

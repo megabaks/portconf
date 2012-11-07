@@ -207,11 +207,11 @@ diff_ask(){
 					done
 				fi
 			fi
-			unset plus minus my_exist
+			unset plus minus minus_exist plus_exist
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
-		echo -e "${full_diff%\\n}" | grep \: #| sort -u
+		echo -e "${full_diff%\\n}" | grep \:
 		echo "###############################################"
 		if [[ -z "${yes}" && -z "${pretend}" ]];then
 			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";

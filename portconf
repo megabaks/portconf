@@ -46,6 +46,7 @@ for opt in ${pre_profile};do
 	unset opt
 done
 PROFILE="$(tr "[:space:]" "\n" <<< ${uses})"
+unset uses
 ############################################################################
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null

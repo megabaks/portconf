@@ -29,8 +29,8 @@ IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ################ sort_passed_uses ##########################################
 sort_passed_uses(){
 	for opt in ${1};do
-		uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
-		uses+=" $(echo ${1} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+		uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
+		uses+=" $(echo ${1} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 		unset opt
 	done
 	echo ${uses}

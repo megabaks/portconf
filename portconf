@@ -596,7 +596,7 @@ invalid_uses(){
 	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" $'\n' | sort -u)"
 	
 	#### broken overlays workaround ####
-	for path in ${PORTDIR};do
+	for path in ${PORTDIR_OVERLAY};do
 		tput civis
 		echo -e "${underline}Preparing use flags${restore}: ${contrast}${path}${restore}" 2>/dev/null
 		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"

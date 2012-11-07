@@ -39,7 +39,13 @@ profile() {
 	fi
 	echo $use
 }
-PROFILE="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" "\n" | sort -u)"
+pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" "\n" | sort -u)"
+for opt in ${pre_profile};do
+	uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr "\n" " ")"
+	uses+=" $(echo ${pre_profile} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+	unset opt
+done
+PROFILE="$(tr "[:space:]" "\n" <<< ${uses})"
 ############################################################################
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null

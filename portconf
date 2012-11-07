@@ -26,9 +26,19 @@ IGNORE="${IGNORE_CATEGORY}
 ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ############################################################################
+################ sort_passed_uses ##########################################
+sort_passed_uses(){
+	for opt in ${1};do
+		uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
+		uses+=" $(echo ${1} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+		unset opt
+	done
+	echo ${uses}
+	unset uses
+}
+############################################################################
 ################ profile ###################################################
 profile() {
-	unset USE
 	local use;
 	local path;
 	[ -f "$1/make.defaults" ] && source "$1/make.defaults"
@@ -41,13 +51,8 @@ profile() {
 	echo $use
 }
 pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" $'\n' | sort -u)"
-for opt in ${pre_profile};do
-	uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
-	uses+=" $(echo ${pre_profile} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
-	unset opt
-done
-PROFILE="$(tr "[:space:]" $'\n' <<< ${uses})"
-unset uses
+profile_uses="$(sort_passed_uses "${pre_profile}")"
+PROFILE="$(tr "[:space:]" $'\n' <<< ${profile_uses})"
 ############################################################################
 ################ make.conf #################################################
 [ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null
@@ -271,12 +276,7 @@ sort_uses(){
 		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
 			atom_opts+="${option}"
 		done
-
-		for opt in ${atom_opts};do
-			uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
-			uses+=" $(echo ${atom_opts} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
-			unset opt
-		done
+		uses="$(sort_passed_uses "${atom_opts}")"
 		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
 		if [ -n "${comment}" ];then
 			echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
@@ -523,12 +523,11 @@ for x in "env" "env.d";do
 		done <<< "${atom}"
 	done <<< "${files}"
 
-IFS="%"
+	IFS="%"
 	for target in ${RM%\%};do
 		remove_ask "${target}"
 	done
-IFS="
-"
+	IFS=$'\n'
 	for target in ${dirs};do
 		[ -z "`ls ${target}`" ] && remove_ask "${target}"
 	done
@@ -685,8 +684,7 @@ not_found(){
 			diff_ask "${package}" "${tmp_package}"
 		elif [[ -n "${incorrect}" && -d "${package}" ]];then
 			echo -e "${underline}Removing incorrect from${restore} ${contrast}${package}${restore}:"
-			IFS='
-'
+			IFS=$'\n'
 			for line in ${incorrect};do
 				for file in `grep -RH "${line//'*'/\*}" "${package}"/ | awk -F \: '{print $1}'`;do
 					tmp_file="$(mktemp)"
@@ -703,8 +701,7 @@ not_found(){
 
 	INVALID="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>&1 | grep "Invalid.*\'.*\'" | grep -v '\.\.\.' | sort -u)"
 
-IFS='
-'
+	IFS=$'\n'
 	for string in ${INVALID};do
 		[ -z "${string}" ] && break
 		file="$(awk -F ':' '{print $1}' <<< "${string}")"

@@ -20,8 +20,8 @@ PORT_ETC="/etc/portage"
 [ -z "${COUNT}" ] && COUNT="10"
 ############################################################################
 ################ ignore ####################################################
-[ -n "${IGNORE_CATEGORY}" ] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" "\n" <<< "${IGNORE_CATEGORY}"`")"
-[ -n "${IGNORE_PN}" ] && IGNORE_PN="$(sed -e '/^$/d' -e 's/^/.*\//g' <<< "`tr "[:space:]" "\n" <<< "${IGNORE_PN}"`")"
+[ -n "${IGNORE_CATEGORY}" ] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_CATEGORY}"`")"
+[ -n "${IGNORE_PN}" ] && IGNORE_PN="$(sed -e '/^$/d' -e 's/^/.*\//g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_PN}"`")"
 IGNORE="${IGNORE_CATEGORY}
 ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
@@ -40,13 +40,13 @@ profile() {
 	fi
 	echo $use
 }
-pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" "\n" | sort -u)"
+pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'` | tr "[:space:]" $'\n' | sort -u)"
 for opt in ${pre_profile};do
-	uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr "\n" " ")"
-	uses+=" $(echo ${pre_profile} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+	uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
+	uses+=" $(echo ${pre_profile} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 	unset opt
 done
-PROFILE="$(tr "[:space:]" "\n" <<< ${uses})"
+PROFILE="$(tr "[:space:]" $'\n' <<< ${uses})"
 unset uses
 ############################################################################
 ################ make.conf #################################################
@@ -268,13 +268,13 @@ sort_uses(){
 	for atom in ${PACKAGES};do
 		comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 		for option in \
-		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" "\n" | uniq | tr "\n" " ")";do
+		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
 			atom_opts+="${option}"
 		done
 
 		for opt in ${atom_opts};do
-			uses="$(echo -e ${uses} | tr "[:space:]" "\n" | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr "\n" " ")"
-			uses+=" $(echo ${atom_opts} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+			uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
+			uses+=" $(echo ${atom_opts} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 			unset opt
 		done
 		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
@@ -541,9 +541,9 @@ eend $? 2>/dev/null
 invalid_uses(){
 	FULL="${PROFILE} ${MAKE_USES}"
 	for opt in ${FULL};do
-		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" "\n" | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 	done
-	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" "\n" | sort -u)"
+	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" $'\n' | sort -u)"
 	
 	#### broken overlays workaround ####
 	for path in ${PORTDIR};do
@@ -572,8 +572,8 @@ check_uses(){
 		sed -e "s|<iuse>||g" -e "s|<use enabled=\"1\">||g" -e "s|<use enabled=\"0\">||g" \
 		-e "s|<iuse default=\"1\">||g" -e "s|</iuse>||g" -e "s|</use>||g"
 		)"
-		ALL_USE="$(echo -e "${ALL_USE}" "${Q_USE}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
-		LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" "\n" | sort -u)"
+		ALL_USE="$(echo -e "${ALL_USE}" "${Q_USE}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
+		LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" $'\n' | sort -u)"
 		USES="$(sed -e 's|^-||g' <<< "${LOCAL}")"
 		for use in ${USES};do
 			if ! grep -q "\<${use}\>" <<< "${ALL_USE}";then
@@ -589,16 +589,16 @@ check_uses(){
 			fi
 		done
 
-		incorrect_use="$(echo ${incorrect_use} | tr "[:space:]" "\n" | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
+		incorrect_use="$(echo ${incorrect_use} | tr "[:space:]" $'\n' | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
 		if [ -n "${incorrect_use}" ];then
 			while read trash;do
 				echo -e "Global or invalid use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"
 				strings="$(grep "^${category}/${pn}[[:space:]].*\<${trash}\>" ${tmp_file})"
 				while read string;do
 					struse="${string#${category}/${pn}}"
-					struse="$(tr "[:space:]" "\n" <<< ${struse})"
+					struse="$(tr "[:space:]" $'\n' <<< ${struse})"
 					usefxd="$(sed -e "s|^${trash}$||" -e "s|^\-${trash}$||" -e '/^$/d' <<< "${struse}")"
-					usefxd="$(tr "\n" " " <<< "${usefxd}")"
+					usefxd="$(tr $'\n' " " <<< "${usefxd}")"
 					usefxd="$(sed -e 's| - | |g' -e 's/[ -]*$//' <<< ${usefxd})"
 					strfxd="${category}/${pn} ${usefxd}"
 					sed -e "s|^${category}/${pn}[[:space:]].*${trash}.*|$strfxd|" -i ${tmp_file} 2>/dev/null
@@ -670,8 +670,8 @@ tput cnorm
 not_found(){
 	TRASH="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>/dev/null)"
 	for package in `ls -d1 ${PORT_ETC}/package* | grep -v "~"`;do
-		incorrect="$(echo -e "${TRASH}" | tr "\n" "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
-		tr "%" "\n" | sed -e '/^$/d' | grep -v "${IGNORE}")"
+		incorrect="$(echo -e "${TRASH}" | tr $'\n' "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
+		tr "%" $'\n' | sed -e '/^$/d' | grep -v "${IGNORE}")"
 		if [[ -n "${incorrect}" && -f "${package}" ]];then
 			tmp_package="$(mktemp)"
 			cp "${package}" "${tmp_package}"
@@ -742,7 +742,7 @@ use_makeconf(){
 [ -f "/etc/make.conf" ] && makefile="/etc/make.conf"
 [ -f "${PORT_ETC}/make.conf" ] && makefile="${PORT_ETC}/make.conf"
 echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
-USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" "\n" | sort -u | sed -e '/^$/d')"
+USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
 
 tmp_file="$(mktemp)"
 cp "${makefile}" "${tmp_file}"

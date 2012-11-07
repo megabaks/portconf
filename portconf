@@ -855,24 +855,27 @@ help_pc(){
 echo -e \
 "Usage: portconf [OPTION] [OPTION]…[OPTION]
 available OPTIONS:
---help, -h, -?, h:      This help.
---restore, -r:          Rolling up /etc/portage to one of available states.
---backup, -b:           Create backup for current /etc/portage state.(enabled in all follow options)
---sort, -s:             Sort entries alphabetically.
---use-sort, -us:        Sort useflags.
---use-invalid, -ui:     Delete invalid or global defined useflags from package.use.
---use-make, -um:        Delete profile defined useflags from make.conf.
---use-full, -uf:        An analog '-us -ui -um'.
---keys-sort, -ks:       Sort keywords.
---trash, -t:            Delete not_founded/not_installed entries.
---force-trash, -ft:     Delete all not_installed entries.(exclude package.mask file/dir)
---rm-comments, -c:      Delete lines starting with comment.
---rm-all-comments, -ac: Delete all comments.
---full, -f:             An analog '-s -t -uf'
---files-2-dirs, -f2d:   Converting package.* files to directories(comments will be removed).
---dirs-2-files, -d2f:   Converting package.* dirs to files.
---yes, -y:              Auto answer (Yes).
---pretend, -p           Check only.
+--restore, -r:               Rolling up /etc/portage to one of available states.
+--backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
+--sort, -s:                  Sort entries alphabetically.
+--use-sort, -us:             Sort useflags.
+--use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
+--use-make, -um:             Delete profile defined useflags from make.conf.
+--use-full, -uf:             An analog '-us -ui -um'.
+--keys-sort, -ks:            Sort keywords.
+--trash, -t:                 Delete not_founded/not_installed entries.
+--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
+--rm-comments, -c:           Delete lines starting with comment.
+--rm-all-comments, -ac:      Delete all comments.
+--full, -f:                  An analog '-s -t -uf'
+--files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
+--dirs-2-files, -d2f:        Converting package.* dirs to files.
+--yes, -y:                   Auto answer (Yes).
+--pretend, -p                Check only.
+--all-profiles-use, -apu:    List \${USE} defined in profiles.
+--profiles-use, -pu:         List \${USE} of profile.
+--current-profile-use, -cpu: \${USE} of current profile.
+--help, -h, -?, h:           This help.
 
 OPTIONS must be separated by SPACE."
 }

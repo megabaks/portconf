@@ -596,13 +596,15 @@ invalid_uses(){
 	GLOBAL="$(echo ${GLOBAL} | tr "[:space:]" $'\n' | sort -u)"
 	
 	#### broken overlays workaround ####
-	for path in ${PORTDIR_OVERLAY};do
-		tput civis
-		echo -e "${underline}Preparing use flags${restore}: ${contrast}${path}${restore}" 2>/dev/null
-		ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
-		rm "${path}/.ebuild.x"
-		eend $? 2>/dev/null
-	done 2>/dev/null
+	if [[ -n "${PORTDIR_OVERLAY}" ]];then
+		for path in ${PORTDIR_OVERLAY};do
+			tput civis
+			echo -e "${underline}Preparing use flags${restore}: ${contrast}${path}${restore}" 2>/dev/null
+			ALL_Q_USE+=" $(PORTDIR="${path}" quse -Ca)"
+			rm "${path}/.ebuild.x"
+			eend $? 2>/dev/null
+		done 2>/dev/null
+	fi
 	eend $? 2>/dev/null
 ############################################################################
 check_uses(){

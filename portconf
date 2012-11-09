@@ -41,11 +41,11 @@ sort_passed_uses(){
 profile() {
 	local use;
 	local path;
-	[ -f "$1/make.defaults" ] && source "$1/make.defaults"
+	[ -f "${1}/make.defaults" ] && . "${1}/make.defaults"
 	use="$USE"
-	if [ -f "$1/parent" ]; then
-		for path in `cat $1/parent`;do
-			use="$use $(profile "$1/$path")"
+	if [ -f "${1}/parent" ]; then
+		for path in `cat ${1}/parent`;do
+			use="$use $(profile "${1}/$path")"
 		done
 	fi
 	echo $use
@@ -86,8 +86,8 @@ current_profile(){
 }
 ############################################################################
 ################ make.conf #################################################
-[ -f "/etc/make.conf" ] && source /etc/make.conf 2>/dev/null
-[ -f "${PORT_ETC}/make.conf" ] && source ${PORT_ETC}/make.conf 2>/dev/null
+[ -f "/etc/make.conf" ] && . /etc/make.conf 2>/dev/null
+[ -f "${PORT_ETC}/make.conf" ] && . ${PORT_ETC}/make.conf 2>/dev/null
 MAKE_USES="${USE}"
 unset USE
 [ -z "${PORTDIR}" ] && PORTDIR="/usr/portage"
@@ -945,7 +945,7 @@ help_pc(){
 echo -e \
 "Usage: portconf [OPTION] [OPTION]…[OPTION]
 available OPTIONS:
---regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. Highly recommend!
+--regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
 --restore, -r:               Rolling up /etc/portage to one of available states.
 --backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
 --sort, -s:                  Sort entries alphabetically.
@@ -972,11 +972,33 @@ OPTIONS must be separated by SPACE."
 }
 ############################################################################
 ################ run_it ####################################################
-[[ -z "${@}" ]] && help_pc
-grep -q -e " \--yes\>" -e " \-y\>" <<< " ${@}" && yes="1"
-grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${@}" && pretend="1"
-grep -q -e " \--regen-cache\>" -e " \-rc\>" <<< " ${@}" && eix_check || eix_method
-opts="$(sed -e 's| --yes\>||g;s| -y\>||g' -e 's| --pretend\>||g;s| -p\>||g' -e 's| --regen-cache\>||g;s| -rc\>||g' <<< " ${@}")"
+eix_dep_keys="--use-invalid
+-ui
+--use-make
+-um
+--use-full
+-uf
+--trash
+-t
+--force-trash
+-ft
+--full
+-f"
+opts=" ${PORTCONF_DEFAULT_OPTS} ${@}"
+grep -q -e " \--yes\>" -e " \-y\>" <<< " ${opts}" && yes="1"
+grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${opts}" && pretend="1"
+if grep -q "${eix_dep_keys//\-/\\-}" <<< "${opts}";then
+	if grep -q -e " \--regen-cache\>" -e " \-rc\>" <<< " ${opts}";then
+		eix_check
+		opts="$(sed -e 's| --regen-cache\>||g;s| -rc\>||g' -e '/^[ \t]$/d' <<< " ${opts}")"
+	else
+		eix_method
+	fi
+else
+	opts="$(sed -e 's| --regen-cache\>||g;s| -rc\>||g' -e '/^[ \t]$/d' <<< " ${opts}")"
+fi
+opts="$(sed -e 's| --yes\>||g;s| -y\>||g' -e 's| --pretend\>||g;s| -p\>||g' <<< " ${opts}")"
+[[ -z "${@}" || -z "${opts}" ]] && help_pc
 for opt in ${opts};do
 	case "${opt}" in
 	--restore | -r ) restore;;

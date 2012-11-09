@@ -25,6 +25,7 @@ PORT_ETC="/etc/portage"
 IGNORE="${IGNORE_CATEGORY}
 ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
+[[ -z "${IGNORE}" ]] && IGNORE="Hello, LOR!!! :3"
 ############################################################################
 ################ sort_passed_uses ##########################################
 sort_passed_uses(){
@@ -788,7 +789,7 @@ tput cnorm
 ############################################################################
 ################ not_found #################################################
 not_found(){
-	TRASH="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>/dev/null)"
+	TRASH="$(LANG=en eix -Ttc 2>/dev/null)"
 	for package in `ls -d1 ${PORT_ETC}/package* | grep -v "~"`;do
 		incorrect="$(echo -e "${TRASH}" | tr $'\n' "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
 		tr "%" $'\n' | sed -e '/^$/d' | grep -v "${IGNORE}")"

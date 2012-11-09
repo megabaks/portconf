@@ -783,7 +783,6 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 		fi
 	done
 fi
-eend $? 2>/dev/null
 tput cnorm
 }
 ############################################################################
@@ -959,7 +958,7 @@ available OPTIONS:
 --force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments, -c:           Delete lines starting with comment.
 --rm-all-comments, -ac:      Delete all comments.
---full, -f:                  An analog '-s -t -uf'
+--full, -f:                  An analog '-s -t -uf -ks'
 --files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
 --dirs-2-files, -d2f:        Converting package.* dirs to files.
 --yes, -y:                   Auto answer (Yes).

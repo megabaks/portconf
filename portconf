@@ -134,7 +134,7 @@ eix_check(){
 		echo -e "${underline}Creating new temporary cache.${restore}"
 		repo_fix
 		eix_cache="$(mktemp)"
-		chown portage:portage "${eix_cache}"
+		chown portage:portage "${eix_cache}" 2>/dev/null
 		export EIX_CACHEFILE="${eix_cache}"
 		eix-update
 	else
@@ -260,8 +260,13 @@ diff_ask(){
 			while read x;do
 				case ${x} in
 					Yes | YES | yes | Y | y | "" )
-						mv "${2}" "${1}" 2>/dev/null
-						chmod 0644 "${1}"
+						if [[ "${UID}" == "0" ]];then
+							mv "${2}" "${1}" 2>/dev/null
+							chmod 0644 "${1}"
+						else
+							echo -e "you are ${red}!root${restore} ---> go away!"
+							exit 1
+						fi
 						unset full_diff
 						return 0
 						break;;

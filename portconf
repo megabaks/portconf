@@ -826,7 +826,7 @@ not_found(){
 		fi
 	done
 
-	INVALID="$(LANG=en eix -Tt --xml --end "Hello, LOR" 2>&1 | grep "Invalid.*\'.*\'" | grep -v '\.\.\.' | sort -u)"
+	INVALID="$(LANG=en eix -Ttc 2>&1 | grep "Invalid.*\'.*\'" | grep -v '\.\.\.' | sort -u)"
 
 	IFS=$'\n'
 	for string in ${INVALID};do
@@ -959,7 +959,7 @@ available OPTIONS:
 --use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
 --use-make, -um:             Delete profile defined useflags from make.conf.
 --use-full, -uf:             An analog '-us -ui -um'.
---keywords-sort, -ks:        Sort keywords.
+--keyword-one, -ko:          Save only latest defined keyword.
 --trash, -t:                 Delete not_founded/not_installed entries.
 --force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 --rm-comments, -c:           Delete lines starting with comment.
@@ -1028,7 +1028,7 @@ for opt in ${opts};do
 		invalid_uses;
 		use_makeconf
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
-	--keywords-sort | -ks )
+	--keyword-one | -ko )
 		backup;
 		sort_keywords;;
 	--trash | -t )

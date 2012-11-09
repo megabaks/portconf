@@ -419,7 +419,7 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 fi
 }
 ############################################################################
-################ sort_keywords #############################################
+################ one_keyword #############################################
 sort_keywords(){
 	keys(){
 		echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"

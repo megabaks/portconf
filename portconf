@@ -987,6 +987,7 @@ eix_dep_keys="--use-invalid
 opts=" ${PORTCONF_DEFAULT_OPTS} ${@}"
 grep -q -e " \--yes\>" -e " \-y\>" <<< " ${opts}" && yes="1"
 grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${opts}" && pretend="1"
+opts="$(sed -e 's| --yes\>||g;s| -y\>||g' -e 's| --pretend\>||g;s| -p\>||g' <<< " ${opts}")"
 if grep -q "${eix_dep_keys//\-/\\-}" <<< "${opts}";then
 	if grep -q -e " \--regen-cache\>" -e " \-rc\>" <<< " ${opts}";then
 		eix_check
@@ -997,7 +998,6 @@ if grep -q "${eix_dep_keys//\-/\\-}" <<< "${opts}";then
 else
 	opts="$(sed -e 's| --regen-cache\>||g;s| -rc\>||g' -e '/^[ \t]$/d' <<< " ${opts}")"
 fi
-opts="$(sed -e 's| --yes\>||g;s| -y\>||g' -e 's| --pretend\>||g;s| -p\>||g' <<< " ${opts}")"
 [[ -z "${@}" || -z "${opts}" ]] && help_pc
 for opt in ${opts};do
 	case "${opt}" in

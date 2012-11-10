@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v3 or later
 ############################################################################
 ################ check_openrc ##############################################
-[ -f "/etc/init.d/functions.sh" ] && . /etc/init.d/functions.sh
+[[ -f "/etc/init.d/functions.sh" ]] && . /etc/init.d/functions.sh
 ############################################################################
 ################ colors ####################################################
 green="\033[01;32m"
@@ -16,12 +16,12 @@ underline="\033[4m"
 PKGDB="/var/db/pkg"
 BRDIR="/var/lib/portconf"
 PORT_ETC="/etc/portage"
-[ -f "/etc/portconf.conf" ] && . /etc/portconf.conf
-[ -z "${COUNT}" ] && COUNT="10"
+[[ -f "/etc/portconf.conf" ]] && . /etc/portconf.conf
+[[ -z "${COUNT}" ]] && COUNT="10"
 ############################################################################
 ################ ignore ####################################################
-[ -n "${IGNORE_CATEGORY}" ] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_CATEGORY}"`")"
-[ -n "${IGNORE_PN}" ] && IGNORE_PN="$(sed -e '/^$/d' -e 's/^/.*\//g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_PN}"`")"
+[[ -n "${IGNORE_CATEGORY}" ]] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_CATEGORY}"`")"
+[[ -n "${IGNORE_PN}" ]] && IGNORE_PN="$(sed -e '/^$/d' -e 's/^/.*\//g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_PN}"`")"
 IGNORE="${IGNORE_CATEGORY}
 ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
@@ -42,9 +42,9 @@ sort_passed_uses(){
 profile() {
 	local use;
 	local path;
-	[ -f "${1}/make.defaults" ] && . "${1}/make.defaults"
+	[[ -f "${1}/make.defaults" ]] && . "${1}/make.defaults"
 	use="$USE"
-	if [ -f "${1}/parent" ]; then
+	if [[ -f "${1}/parent" ]]; then
 		for path in `cat ${1}/parent`;do
 			use="$use $(profile "${1}/$path")"
 		done
@@ -87,12 +87,11 @@ current_profile(){
 }
 ############################################################################
 ################ make.conf #################################################
-[ -f "/etc/make.conf" ] && . /etc/make.conf 2>/dev/null
-[ -f "${PORT_ETC}/make.conf" ] && . ${PORT_ETC}/make.conf 2>/dev/null
+[[ -f "/etc/make.conf" ]] && . /etc/make.conf 2>/dev/null
+[[ -f "${PORT_ETC}/make.conf" ]] && . ${PORT_ETC}/make.conf 2>/dev/null
 MAKE_USES="${USE}"
 unset USE
-[ -z "${PORTDIR}" ] && PORTDIR="/usr/portage"
-[ -n "${PORTDIR_OVERLAY}" ] && MY_PORTDIR="${PORTDIR} ${PORTDIR_OVERLAY}"
+[[ -z "${PORTDIR}" ]] && PORTDIR="/usr/portage"
 ############################################################################
 ################ timestamp #################################################
 timestamp(){
@@ -130,7 +129,7 @@ rm_repo_fix(){
 ################ eix check #################################################
 eix_check(){
 	exist="$(eix --version 2>/dev/null)"
-	if [ -n "${exist}" ];then
+	if [[ -n "${exist}" ]];then
 		echo -e "${underline}Creating new temporary cache.${restore}"
 		repo_fix
 		eix_cache="$(mktemp)"
@@ -170,26 +169,26 @@ Create temporary cache?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 ############################################################################
 ################ backup ####################################################
 backup(){
-	[ -d "${BRDIR}" ] || mkdir "${BRDIR}"
+	[[ -d "${BRDIR}" ]] || mkdir "${BRDIR}"
 	tarballs="$(ls -1 --color=never ${BRDIR})"
 	oldest="$(head -n1 <<< "${tarballs}")"
 	newest="$(tail -n1 <<< "${tarballs}")"
 	count="$( wc -l <<< "${tarballs}")"
-	[ -z "${count}" ] && count="0"
-	if [ -f "/etc/make.conf" ];then
+	[[ -z "${count}" ]] && count="0"
+	if [[ -f "/etc/make.conf" ]];then
 		etc_update="$(timestamp ${PORT_ETC}/{*,*/*,*/*/*,*/*/*/*} /etc/make.conf)"
 	else
 		etc_update="$(timestamp ${PORT_ETC}/{*,*/*,*/*/*,*/*/*/*})"
 	fi
 	portconf_update="$(timestamp ${BRDIR}/*)"
-	[ -z "${portconf_update}" ] && portconf_update="0"
+	[[ -z "${portconf_update}" ]] && portconf_update="0"
 	if (( "${etc_update}" > "${portconf_update}" ));then
 		if (( "${count}" >= "${COUNT}" ));then
 			rm "${BRDIR}/${oldest}"
 		fi
 		echo -e "Backups: ${green}creating${restore}..."
 		name="${BRDIR}/portage_$(date +%g.%m.%d-%H:%M).tar.bz2"
-		if [ -f "/etc/make.conf" ];then
+		if [[ -f "/etc/make.conf" ]];then
 			tar -jcf "${name}" -C /etc/ portage make.conf
 		else
 			tar -jcf "${name}" -C /etc/ portage
@@ -220,7 +219,7 @@ restore(){
 ################ diff_ask ##################################################
 diff_ask(){
 	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
-	if [ -n "${my_diff}" ];then
+	if [[ -n "${my_diff}" ]];then
 		while read line;do
 			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@@' <<< "${line}";then
 				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
@@ -338,26 +337,58 @@ sort_uniq_files(){
 	done
 }
 ############################################################################
+################ file or dir... ############################################
+file_or_dir(){
+	for target in $(ls -d1 ${PORT_ETC}/${1} 2>/dev/null);do
+		if [[ -f "${target}" ]];then
+			file="${target}"
+			if [[ -s ${file} ]];then
+				echo -e "${underline}${2}${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
+				${3};${4};${5};${6};${7};
+			else
+				echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
+				remove_ask "${file}"
+				eend $? 2>/dev/null
+			fi
+		elif [[ -d "${target}" ]];then
+			for f in `find ${target} -type f`;do
+				file="${f}"
+				if [[ -s ${file} ]];then
+					echo -e "${underline}${2}${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
+					${3};${4};${5};${6};${7};
+				else
+					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
+					remove_ask "${file}"
+					eend $? 2>/dev/null
+					continue
+				fi
+			done
+		fi
+	done
+}
+############################################################################
 ################ rm_comments ###############################################
 rm_comments(){
-	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
-		tmp_package="$(mktemp)"
-		cp "${package}" "${tmp_package}"
-		sed -e "s|^#.*||g" -e '/^$/d' -i ${tmp_package}
-		diff_ask "${package}" "${tmp_package}"
-	done
-	eend $? 2>/dev/null
+	no_newline(){
+		tmp_file="$(mktemp)"
+		cp "${file}" "${tmp_file}"
+		sed -e "s|^#.*||g" -e '/^$/d' -i ${tmp_file}
+		diff_ask "${file}" "${tmp_file}"
+		eend $? 2>/dev/null
+	}
+	file_or_dir "package.*" "Checking comments:" "no_newline"
 }
 ############################################################################
 ################ rm_all_comments ###########################################
 rm_all_comments(){
-	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
-		tmp_package="$(mktemp)"
-		cp "${package}" "${tmp_package}"
-		sed -e "s|#.*||g" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_package}
-		diff_ask "${package}" "${tmp_package}"
-	done
-	eend $? 2>/dev/null
+	no_newline_inline(){
+		tmp_file="$(mktemp)"
+		cp "${file}" "${tmp_file}"
+		sed -e "s|#.*||g" -e 's/[ \t]*$//' -e '/^$/d' -i ${tmp_file}
+		diff_ask "${file}" "${tmp_file}"
+		eend $? 2>/dev/null
+	}
+	file_or_dir "package.*" "Checking comments:" "no_newline_inline"
 }
 ############################################################################
 ################ sort_uses #################################################
@@ -373,7 +404,7 @@ sort_uses(){
 		done
 		uses="$(sort_passed_uses "${atom_opts}")"
 		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
-		if [ -n "${comment}" ];then
+		if [[ -n "${comment}" ]];then
 			echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
 		else
 			echo "${atom} ${uses}" >> "${tmp_file}"
@@ -383,7 +414,7 @@ sort_uses(){
 	cp "${tmp_file}" "${striped}" 2>/dev/null
 
 	while read atom opt;do
-		[ -z "${opt}" ] && sed -e "s|^${atom} ||" -i "${striped}" 2>/dev/null
+		[[ -z "${opt}" ]] && sed -e "s|^${atom} ||" -i "${striped}" 2>/dev/null
 	done < "${tmp_file}"
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
 	sort -u "${striped}" -o "${striped}" 2>/dev/null
@@ -394,36 +425,12 @@ sort_uses(){
 ############################################################################
 ################ package.use ###############################################
 sort_use_file(){
-if [ -f "${PORT_ETC}/package.use" ];then
-	file="${PORT_ETC}/package.use"
-	if [[ -s ${file} ]];then
-		echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
-		sort_uses;
-	else
-		echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
-		remove_ask "${file}"
-		eend $? 2>/dev/null
-	fi
-elif [ -d "${PORT_ETC}/package.use" ];then
-	for f in `find ${PORT_ETC}/package.use/ -type f`;do
-		file="${f}"
-		if [[ -s ${file} ]];then
-			echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
-			sort_uses;
-		else
-			echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
-			remove_ask "${file}"
-			eend $? 2>/dev/null
-			continue
-		fi
-	done
-fi
+	file_or_dir "package.use" "Sorting use flags in" "sort_uses"
 }
 ############################################################################
 ################ one_keyword ###############################################
 sort_keywords(){
 	keys(){
-		echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 		tmp_file="$(mktemp)"
 		atoms="$(awk '{print $1}' "${file}" | sort -u)"
 		while read atom;do
@@ -438,74 +445,20 @@ sort_keywords(){
 		done <<< "${atoms}"
 		sort -u "${tmp_file}" -o "${tmp_file}" 2>/dev/null
 		diff_ask "${file}" "${tmp_file}"
+		eend $? 2>/dev/null
 	}
-
-	for ext in keywords accept_keywords;do
-		package="${PORT_ETC}/package.${ext}"
-		if [[ -f ${package} ]];then
-			file="${package}"
-			if [[ -s ${file} ]];then
-				keys;
-			else
-				echo -e "${underline}Empty file${restore} ${contrast}\'${file}\'${restore}"
-				remove_ask "${file}"
-				eend $? 2>/dev/null
-			fi
-		elif [[ -d ${package} ]];then
-			for file in `find "${package}" -type f`;do
-				if [[ -s ${file} ]];then
-					keys;
-				else
-					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
-					remove_ask "${file}"
-					eend $? 2>/dev/null
-					continue
-				fi
-			done
-		fi
-	done
-	eend $? 2>/dev/null
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "keys"
 }
 ############################################################################
 ################ uniq_keyword ##############################################
 uniq_keywords(){
-	for ext in keywords accept_keywords;do
-		package="${PORT_ETC}/package.${ext}"
-		if [[ -f ${package} ]];then
-			file="${package}"
-			if [[ -s ${file} ]];then
-				echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
-				set -f
-				sort_uses;
-				set +f
-			else
-				echo -e "${underline}Empty file${restore} ${contrast}\'${file}\'${restore}"
-				remove_ask "${file}"
-				eend $? 2>/dev/null
-			fi
-		elif [[ -d ${package} ]];then
-			for file in `find "${package}" -type f`;do
-				if [[ -s ${file} ]];then
-					echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
-					set -f
-					sort_uses;
-					set +f
-				else
-					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
-					remove_ask "${file}"
-					eend $? 2>/dev/null
-					continue
-				fi
-			done
-		fi
-	done
-	eend $? 2>/dev/null
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_uses" "set +f"
 }
 ############################################################################
 ################ not_installed #############################################
 installed(){
 installed="$(LANG=en eix --xml --end --installed "${category}/${pn}" 2>/dev/null | grep "version id=")"
-if [ -n "${installed}" ];then
+if [[ -n "${installed}" ]];then
 	installed_vers="$(awk -F \" '{print $2}' <<< "${installed}")"
 	installed_min_ver="$(head -n1 <<< "${installed_vers}")"
 	installed_max_ver="$(tail -n1 <<< "`grep -v 9999 <<< ${installed_vers}`")"
@@ -516,14 +469,14 @@ fi
 ##########################################
 not_if(){
 	atoms="$(awk '{print $1}' <<< "`grep -v "^#" < ${package}`")"
-	[ -n "${IGNORE}" ] && atoms="$(grep -v "${IGNORE}" <<< "${atoms}")"
+	[[ -n "${IGNORE}" ]] && atoms="$(grep -v "${IGNORE}" <<< "${atoms}")"
 	echo -e "${underline}Checking${restore} ${contrast}$package${restore}"
-	if [ -n "${atoms}" ];then
+	if [[ -n "${atoms}" ]];then
 		while read atom;do
 			while read category pn ver rev slot;do
 				sw="$(sed -e 's|^=|= |g' -e 's|^>=|>= |g' -e 's|^>|> |g' -e 's|<|< |g'\
 				-e 's| <|<|g' -e 's| =|=|g' -e 's|~|~ |g' -e 's|=|= |g' <<< "${category}" )"
-				if [ "${category}" == "${sw}" ];then
+				if [[ "${category}" == "${sw}" ]];then
 					unset sw
 				else
 					sw="$(awk '{print $1}' <<< "${sw}" )"
@@ -532,7 +485,7 @@ not_if(){
 
 				[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
 
-				if [ -n "${rev}" ] && [ -z "${slot}" ] && `grep -q \: <<< "${rev}"`;then
+				if [[ -n "${rev}" ]] && [[ -z "${slot}" ]] && `grep -q \: <<< "${rev}"`;then
 					slot="${rev}"
 				fi
 				slot="${slot#:}"
@@ -579,21 +532,21 @@ done
 ################ package.env workaround ####################################
 package_env(){
 for package in `find ${PORT_ETC}/ -name "package.*" | grep -v "~"`;do
-	if [ "${package##*/}" == "package.env" ];then
-		if [ -f "${package}" ];then
+	if [[ "${package##*/}" == "package.env" ]];then
+		if [[ -f "${package}" ]];then
 			while read line;do
 				atom="${line%% *}"
 				for conf in ${line#${atom} };do
-					[ -f "${PORT_ETC}/env/${conf}" ] && IGNORE="${IGNORE}
+					[[ -f "${PORT_ETC}/env/${conf}" ]] && IGNORE="${IGNORE}
 ${conf}"
 				done
 			done < "${package}"
-		elif [ -d "${package}" ];then
+		elif [[ -d "${package}" ]];then
 			for subpackage in `find "${package}" -type f | grep -v "~"`;do
 				while read line;do
 					atom="${line%% *}"
 					for conf in ${line#${atom} };do
-						[ -f "${PORT_ETC}/env/${conf}" ] && IGNORE="${IGNORE}
+						[[ -f "${PORT_ETC}/env/${conf}" ]] && IGNORE="${IGNORE}
 ${conf}"
 					done
 				done < "${subpackage}"
@@ -609,9 +562,9 @@ echo -e "${underline}Looking not installed in ${restore} ${contrast}${PORT_ETC}/
 package_env;
 for x in "env" "env.d";do
 	files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f 2>/dev/null| cut -d\/ -f5-)"
-	[ -n "${IGNORE}" ] && files="$(grep -v "${IGNORE}" <<< "${files}")"
+	[[ -n "${IGNORE}" ]] && files="$(grep -v "${IGNORE}" <<< "${files}")"
 	dirs="$(find ${PORT_ETC}/${x}/ -type d 2>/dev/null)"
-	[ -n "${IGNORE}" ] && dirs="$(grep -v "${IGNORE}" <<< "${dirs}")"
+	[[ -n "${IGNORE}" ]] && dirs="$(grep -v "${IGNORE}" <<< "${dirs}")"
 	[[ -n "${files}" || -n "${dirs}" ]] || break
 	
 	while read file;do
@@ -619,19 +572,19 @@ for x in "env" "env.d";do
 		atom="$(sed -e '/^$/d' <<< "${atom}")"
 		while read category pn ver rev slot;do
 			[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
-			[ "${ver}" == "(null)" ] && ver="${ver//(null)/}"
-			if [ -n "${rev}" ] && ! `grep -q \: <<< "${rev}"`;then
+			[[ "${ver}" == "(null)" ]] && ver="${ver//(null)/}"
+			if [[ -n "${rev}" ]] && ! `grep -q \: <<< "${rev}"`;then
 				full_ver="${ver}-${rev}"
 			else
 				full_ver="${ver}"
 			fi
 
-			if [ -n "${rev}" ] && [ -z "${slot}" ] && `grep -q \: <<< "${rev}"`;then
+			if [[ -n "${rev}" ]] && [[ -z "${slot}" ]] && `grep -q \: <<< "${rev}"`;then
 				slot="${rev}"
 			fi
 			slot="${slot#:}"
 
-			if [ -z "${ver}" ] && [ -z "${slot}" ];then
+			if [[ -z "${ver}" ]] && [[ -z "${slot}" ]];then
 				if ! `ls -d1 ${PKGDB}/${category}/${pn}-[0-9]* &>/dev/null`;then
 					echo -e "${red}Not installed${restore} ${green}${category}/${pn}${restore}"
 					RM+="${PORT_ETC}/${x}/${file}%"
@@ -639,7 +592,7 @@ for x in "env" "env.d";do
 				fi
 			fi
 
-			if [ -n "${ver}" ] && [ -z "${slot}" ] ;then
+			if [[ -n "${ver}" ]] && [[ -z "${slot}" ]] ;then
 				if ! `ls -d1 ${PKGDB}/${category}/${pn}-${full_ver} &>/dev/null`;then
 					echo -e "${red}Not installed${restore} ${green}${category}/${pn}-${full_ver}${restore}"
 					RM+="${PORT_ETC}/${x}/${file}%"
@@ -647,7 +600,7 @@ for x in "env" "env.d";do
 				fi
 			fi
 
-			if [ -z "${ver}" ] && [ -n "${slot}" ] ;then
+			if [[ -z "${ver}" ]] && [[ -n "${slot}" ]] ;then
 				if [[ -z "$(cat ${PKGDB}/${category}/${pn}-[0-9]*/SLOT 2>/dev/null | grep ${slot})" ]];then
 					echo -e "${red}Not installed${restore} ${green}${category}/${pn}:${slot}${restore}"
 					RM+="${PORT_ETC}/${x}/${file}%"
@@ -663,7 +616,7 @@ for x in "env" "env.d";do
 	done
 	IFS=$'\n'
 	for target in ${dirs};do
-		[ -z "`ls ${target}`" ] && remove_ask "${target}"
+		[[ -z "`ls ${target}`" ]] && remove_ask "${target}"
 	done
 unset IFS
 done
@@ -727,7 +680,7 @@ check_uses(){
 
 		incorrect_use="$(echo ${incorrect_use} | tr "[:space:]" $'\n' | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
 		global_use="$(echo ${global_use} | tr "[:space:]" $'\n' | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
-		if [ -n "${incorrect_use}" ];then
+		if [[ -n "${incorrect_use}" ]];then
 			while read trash;do
 				echo -e "Invalid use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"
 				strings="$(grep "^${category}/${pn}[[:space:]].*\<${trash}\>" ${tmp_file})"
@@ -743,7 +696,7 @@ check_uses(){
 				done <<< "${strings}"
 			done <<< "${incorrect_use}"
 		fi
-		if [ -n "${global_use}" ];then
+		if [[ -n "${global_use}" ]];then
 			while read trash;do
 				echo -e "Global  use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"
 				strings="$(grep "^${category}/${pn}[[:space:]].*\<${trash#-}\>" ${tmp_file})"
@@ -762,27 +715,27 @@ check_uses(){
 		unset ALL_USE LOCAL USES incorrect_use global_use use Q_USE
 	done <<< "`[[ -n "${atoms}" ]] && echo -e "${atoms}"`"
 	while read atom opt;do
-		if [ -n "${atom}" ] && [ -z "${opt}" ];then
+		if [[ -n "${atom}" ]] && [[ -z "${opt}" ]];then
 			echo -e "Removing atom: ${green}${atom}${restore}"
 			sed -e "s|^${atom} *$||" -e '/^$/d' -i "${tmp_file}" 2>/dev/null
 			eend $? 2>/dev/null
 		fi
-	done <<< "$([ -n "${IGNORE}" ] && grep -v "${IGNORE}" < "${file}" || cat "${file}")"
+	done <<< "$([[ -n "${IGNORE}" ]] && grep -v "${IGNORE}" < "${file}" || cat "${file}")"
 	while read atom opt;do
-		if [ -n "${atom}" ] && [ -z "${opt}" ];then
+		if [[ -n "${atom}" ]] && [[ -z "${opt}" ]];then
 			echo -e "Removing atom: ${green}${atom}${restore}"
 			sed -e "s|^${atom} *$||" -e '/^$/d' -i "${tmp_file}" 2>/dev/null
 			eend $? 2>/dev/null
 		fi
-	done <<< "$([ -n "${IGNORE}" ] && grep -v "${IGNORE}" < "${tmp_file}" || cat "${tmp_file}")"
+	done <<< "$([[ -n "${IGNORE}" ]] && grep -v "${IGNORE}" < "${tmp_file}" || cat "${tmp_file}")"
 	eend $? 2>/dev/null
 	unset FORMAT USEONLY
 }
-if [ -f "${PORT_ETC}/package.use" ];then
+if [[ -f "${PORT_ETC}/package.use" ]];then
 	file="${PORT_ETC}/package.use"
 	tmp_file="$(mktemp)"
 	cp "${file}" "${tmp_file}"
-	if [ -n "${IGNORE}" ];then
+	if [[ -n "${IGNORE}" ]];then
 		content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
 		[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 	else
@@ -797,13 +750,13 @@ if [ -f "${PORT_ETC}/package.use" ];then
 	tput cnorm;
 	diff_ask "${file}" "${tmp_file}"
 	[[ ! -s "${file}" ]] && remove_ask "${file}"
-elif [ -d "${PORT_ETC}/package.use" ];then
+elif [[ -d "${PORT_ETC}/package.use" ]];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do
 		if [[ -s "${f}" ]];then
 			file="${f}"
 			tmp_file="$(mktemp)"
 			cp "${file}" "${tmp_file}"
-			if [ -n "${IGNORE}" ];then
+			if [[ -n "${IGNORE}" ]];then
 				content="$(awk '{print $1}' ${file} | tr -d "<>=~" | sed -e 's|^#.*||g' | grep -v "${IGNORE}")"
 				[[ -n "${content}" ]] && atoms="$(qatom ${content})"
 			else
@@ -866,7 +819,7 @@ not_found(){
 
 	IFS=$'\n'
 	for string in ${INVALID};do
-		[ -z "${string}" ] && break
+		[[ -z "${string}" ]] && break
 		file="$(awk -F ':' '{print $1}' <<< "${string}")"
 		file="${file##* }"
 		file="${file//[[:space:]]/}"
@@ -899,27 +852,27 @@ not_found(){
 ############################################################################
 ################ profile's uses in make.conf ###############################
 use_makeconf(){
-[ -f "/etc/make.conf" ] && makefile="/etc/make.conf"
-[ -f "${PORT_ETC}/make.conf" ] && makefile="${PORT_ETC}/make.conf"
-echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
-USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
+	[[ -f "/etc/make.conf" ]] && makefile="/etc/make.conf"
+	[[ -f "${PORT_ETC}/make.conf" ]] && makefile="${PORT_ETC}/make.conf"
+	echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
+	USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
 
-tmp_file="$(mktemp)"
-cp "${makefile}" "${tmp_file}"
-while read use;do
-	flag="${use#-}"
-	if [[ -n ${flag} ]];then
-		if grep -q "^${flag}$" <<< "${USE}" && grep -q "^${flag}$" <<< "${PROFILE}";then
-			echo -e "Twice defined: ${red}${use}${restore}"
-			sed -e "s|[^[:punct:]]\<${flag}\>||g" -i ${tmp_file}
-		elif grep -q "^\-${flag}$" <<< "${USE}" && grep -q "^\-${flag}$" <<< "${PROFILE}";then
-			echo -e "Twice defined: ${red}${use}${restore}"
-			sed -e "s|[^[:punct:]]\-\<${flag}\>||g" -i ${tmp_file}
+	tmp_file="$(mktemp)"
+	cp "${makefile}" "${tmp_file}"
+	while read use;do
+		flag="${use#-}"
+		if [[ -n ${flag} ]];then
+			if grep -q "^${flag}$" <<< "${USE}" && grep -q "^${flag}$" <<< "${PROFILE}";then
+				echo -e "Twice defined: ${red}${use}${restore}"
+				sed -e "s|[^[:punct:]]\<${flag}\>||g" -i ${tmp_file}
+			elif grep -q "^\-${flag}$" <<< "${USE}" && grep -q "^\-${flag}$" <<< "${PROFILE}";then
+				echo -e "Twice defined: ${red}${use}${restore}"
+				sed -e "s|[^[:punct:]]\-\<${flag}\>||g" -i ${tmp_file}
+			fi
 		fi
-	fi
-done <<< "${PROFILE}"
-diff_ask "${makefile}" "${tmp_file}"
-eend $? 2>/dev/null
+	done <<< "${PROFILE}"
+	diff_ask "${makefile}" "${tmp_file}"
+	eend $? 2>/dev/null
 }
 ############################################################################
 ################ empty files ###############################################

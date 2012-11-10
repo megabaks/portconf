@@ -362,7 +362,6 @@ rm_all_comments(){
 ############################################################################
 ################ sort_uses #################################################
 sort_uses(){
-	echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 	tmp_file="$(mktemp)"
 	striped="$(mktemp)"
 	PACKAGES="$(awk '{print $1}' ${file} | grep -v '^#.*' | uniq)"
@@ -398,6 +397,7 @@ sort_use_file(){
 if [ -f "${PORT_ETC}/package.use" ];then
 	file="${PORT_ETC}/package.use"
 	if [[ -s ${file} ]];then
+		echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 		sort_uses;
 	else
 		echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
@@ -408,6 +408,7 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 	for f in `find ${PORT_ETC}/package.use/ -type f`;do
 		file="${f}"
 		if [[ -s ${file} ]];then
+			echo -e "${underline}Sorting use flags in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
 			sort_uses;
 		else
 			echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
@@ -419,7 +420,7 @@ elif [ -d "${PORT_ETC}/package.use" ];then
 fi
 }
 ############################################################################
-################ one_keyword #############################################
+################ one_keyword ###############################################
 sort_keywords(){
 	keys(){
 		echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
@@ -454,6 +455,41 @@ sort_keywords(){
 			for file in `find "${package}" -type f`;do
 				if [[ -s ${file} ]];then
 					keys;
+				else
+					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
+					remove_ask "${file}"
+					eend $? 2>/dev/null
+					continue
+				fi
+			done
+		fi
+	done
+	eend $? 2>/dev/null
+}
+############################################################################
+################ uniq_keyword ##############################################
+uniq_keywords(){
+	for ext in keywords accept_keywords;do
+		package="${PORT_ETC}/package.${ext}"
+		if [[ -f ${package} ]];then
+			file="${package}"
+			if [[ -s ${file} ]];then
+				echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
+				set -f
+				sort_uses;
+				set +f
+			else
+				echo -e "${underline}Empty file${restore} ${contrast}\'${file}\'${restore}"
+				remove_ask "${file}"
+				eend $? 2>/dev/null
+			fi
+		elif [[ -d ${package} ]];then
+			for file in `find "${package}" -type f`;do
+				if [[ -s ${file} ]];then
+					echo -e "${underline}Sorting keywords in${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
+					set -f
+					sort_uses;
+					set +f
 				else
 					echo -e "${underline}Empty file${restore} ${contrast}${file}${restore}"
 					remove_ask "${file}"
@@ -951,28 +987,35 @@ help_pc(){
 echo -e \
 "Usage: portconf [OPTION] [OPTION]…[OPTION]
 available OPTIONS:
---regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
---restore, -r:               Rolling up /etc/portage to one of available states.
---backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
---sort, -s:                  Sort entries alphabetically.
---use-sort, -us:             Sort useflags.
---use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
---use-make, -um:             Delete profile defined useflags from make.conf.
---use-full, -uf:             An analog '-us -ui -um'.
---keyword-one, -ko:          Save only latest defined keyword.
---trash, -t:                 Delete not_founded/not_installed entries.
---force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
---rm-comments, -c:           Delete lines starting with comment.
---rm-all-comments, -ac:      Delete all comments.
---full, -f:                  An analog '-s -t -uf -ks'
---files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
---dirs-2-files, -d2f:        Converting package.* dirs to files.
---yes, -y:                   Auto answer (Yes).
---pretend, -p                Check only.
---all-profiles-use, -apu:    List \${USE} defined in profiles.
---profiles-use, -pu:         List \${USE} of profile.
---current-profile-use, -cpu: \${USE} of current profile.
---help, -h, -?, h:           This help.
+${contrast}Common${restore}:
+	--regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
+	--restore, -r:               Rolling up /etc/portage to one of available states.
+	--backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
+	--sort, -s:                  Sort entries alphabetically.
+	--yes, -y:                   Auto answer (Yes).
+	--pretend, -p:               Check only.
+	--help, -h, -?, h:           This help.
+${contrast}\${USE}${restore}:
+	--use-sort, -us:             Sort useflags. Remove doubles and preserve only last defined state (on/off).
+	--use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
+	--use-make, -um:             Delete profile defined useflags from make.conf.
+	--use-full, -uf:             An analog '-us -ui -um'.
+${contrast}\${KEYWORDS}${restore}:
+	--keyword-uniq, -ku:         Like '-us', but for keywords.
+	--keyword-one, -ko:          Save only latest defined keyword.
+${contrast}Trash${restore}:
+	--trash, -t:                 Delete not_founded/not_installed entries.
+	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
+	--rm-comments, -c:           Delete lines starting with comment.
+	--rm-all-comments, -ac:      Delete all comments.
+	--full, -f:                  An analog '-s -t -uf -ku'
+${contrast}Converting${restore}:
+	--files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
+	--dirs-2-files, -d2f:        Converting package.* dirs to files.
+${contrast}Profile${restore}:
+	--all-profiles-use, -apu:    List \${USE} defined in profiles.
+	--profiles-use, -pu:         List \${USE} of profile.
+	--current-profile-use, -cpu: \${USE} of current profile.
 
 OPTIONS must be separated by SPACE."
 }
@@ -1031,6 +1074,9 @@ for opt in ${opts};do
 	--keyword-one | -ko )
 		backup;
 		sort_keywords;;
+	--keyword-uniq | -ku )
+		backup;
+		uniq_keywords;;
 	--trash | -t )
 		backup;
 		not_found;

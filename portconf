@@ -852,7 +852,7 @@ use_makeconf(){
 				echo -e "Twice defined: ${red}${use}${restore}"
 				sed -e "s|[^[:punct:]]\<${flag}\>||g" -i ${tmp_file}
 			elif grep -q "^\-${flag}$" <<< "${USE}" && grep -q "^\-${flag}$" <<< "${PROFILE}";then
-				echo -e "Twice defined: ${red}${use}${restore}"
+				echo -e "Twice defined: ${red}-${use}${restore}"
 				sed -e "s|[^[:punct:]]\-\<${flag}\>||g" -i ${tmp_file}
 			fi
 		fi

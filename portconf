@@ -128,8 +128,7 @@ rm_repo_fix(){
 ############################################################################
 ################ eix check #################################################
 eix_check(){
-	exist="$(eix --version 2>/dev/null)"
-	if [[ -n "${exist}" ]];then
+	if [[ -n "$(eix --version 2>/dev/null)" ]];then
 		echo -e "${underline}Creating new temporary cache.${restore}"
 		repo_fix
 		eix_cache="$(mktemp)"
@@ -146,24 +145,30 @@ eix_check(){
 ############################################################################
 ################ eix check method ##########################################
 eix_method(){
-	if [[ -z "$(eix --dump | grep '^OVERLAY_CACHE_METHOD="parse|ebuild\*"')" ]];then
-		[[ -n "${yes}" ]] && eix_check
-		echo -ne "\n${red}!default 'OVERLAY_CACHE_METHOD'${restore}${contrast} \
+	if [[ -n "$(eix --version 2>/dev/null)" ]];then
+		if [[ -z "$(eix --dump | grep '^OVERLAY_CACHE_METHOD="parse|ebuild\*"')" ]];then
+			[[ -n "${yes}" ]] && eix_check
+			echo -ne "\n${red}!default 'OVERLAY_CACHE_METHOD'${restore}${contrast} \
 Create temporary cache?${restore} [${green}Yes${restore}/${red}No${restore}] ";
-		while read x;do
-			case ${x} in
-				Yes | YES | yes | Y | y | "" )
-					eix_check
-					break;;
-				No | NO | no | N | n )
-					repo_fix
-					eix-update
-					rm_repo_fix
-					break;;
-				* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
-					continue;;
-			esac
-		done
+			while read x;do
+				case ${x} in
+					Yes | YES | yes | Y | y | "" )
+						eix_check
+						break;;
+					No | NO | no | N | n )
+						repo_fix
+						eix-update
+						rm_repo_fix
+						break;;
+					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+						continue;;
+				esac
+			done
+		fi
+	else
+		echo -e "${green}app-portage/eix${restore} ${red}not installed!${restore}"
+		eend 1 2>/dev/null
+		exit 1
 	fi
 }
 ############################################################################

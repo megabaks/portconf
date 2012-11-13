@@ -101,7 +101,6 @@ timestamp(){
 ################ repo fix ##################################################
 repo_fix(){
 	if [[ -n "${PORTDIR_OVERLAY}" ]];then
-		export OVERLAY_CACHE_METHOD="parse|ebuild*"
 		for path in ${PORTDIR_OVERLAY};do
 			local_categories="$(ls -1 ${path}/*/*/*.ebuild | sed -e "s|${path}/||g;s|/.*||g" | sort -u)"
 			portage_categoties="$(cat ${PORTDIR}/profiles/categories)"
@@ -134,6 +133,7 @@ eix_check(){
 		eix_cache="$(mktemp)"
 		chown portage:portage "${eix_cache}" 2>/dev/null
 		export EIX_CACHEFILE="${eix_cache}"
+		export OVERLAY_CACHE_METHOD="parse|ebuild*"
 		eix-update
 	else
 		echo -e "${green}app-portage/eix${restore} ${red}not installed!${restore}"

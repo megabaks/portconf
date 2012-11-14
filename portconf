@@ -327,7 +327,7 @@ remove_ask(){
 ################ sort_packages #############################################
 sort_uniq_files(){
 	tmp_sort="$(mktemp)"
-	for package in `find ${PORT_ETC}/ -type f -name "package.*"`;do
+	for package in `find ${PORT_ETC}/ -type f -name "package.*" \! -name '*~' \! -name '*.bak'`;do
 		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
 
 		all_atoms="$(awk '{print $1}' "${package}" | grep -v "^#"| sort -u)"
@@ -356,7 +356,7 @@ file_or_dir(){
 				eend $? 2>/dev/null
 			fi
 		elif [[ -d "${target}" ]];then
-			for f in `find ${target} -type f`;do
+			for f in `find ${target} -type f \! -name '*~' \! -name '*.bak'`;do
 				file="${f}"
 				if [[ -s ${file} ]];then
 					echo -e "${underline}${2}${restore} ${contrast}${file#${PORT_ETC}/}${restore}"
@@ -508,7 +508,7 @@ not_if(){
 }
 ##########################################
 force_not_installed(){
-for package in `find ${PORT_ETC}/package* -type f`;do
+for package in `find ${PORT_ETC}/package* -type f \! -name '*~' \! -name '*.bak'`;do
 	if [[ -s "${package}" && -n "$(grep -v "^#" < "${package}")" ]];then
 		tmp_package="$(mktemp)"
 		cp "${package}" "${tmp_package}"
@@ -536,7 +536,7 @@ done
 ############################################################################
 ################ package.env workaround ####################################
 package_env(){
-for package in `find ${PORT_ETC}/ -name "package.*" | grep -v "~"`;do
+for package in `find ${PORT_ETC}/ -name "package.*" \! -name '*~' \! -name '*.bak'`;do
 	if [[ "${package##*/}" == "package.env" ]];then
 		if [[ -f "${package}" ]];then
 			while read line;do
@@ -547,7 +547,7 @@ ${conf}"
 				done
 			done < "${package}"
 		elif [[ -d "${package}" ]];then
-			for subpackage in `find "${package}" -type f | grep -v "~"`;do
+			for subpackage in `find "${package}" -type f \! -name '*~' \! -name '*.bak'`;do
 				while read line;do
 					atom="${line%% *}"
 					for conf in ${line#${atom} };do
@@ -566,7 +566,7 @@ env_not_installed(){
 echo -e "${underline}Looking not installed in ${restore} ${contrast}${PORT_ETC}/env${restore}"
 package_env;
 for x in "env" "env.d";do
-	files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f 2>/dev/null| cut -d\/ -f5-)"
+	files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f \! -name '*~' \! -name '*.bak' 2>/dev/null| cut -d\/ -f5-)"
 	[[ -n "${IGNORE}" ]] && files="$(grep -v "${IGNORE}" <<< "${files}")"
 	dirs="$(find ${PORT_ETC}/${x}/ -type d 2>/dev/null)"
 	[[ -n "${IGNORE}" ]] && dirs="$(grep -v "${IGNORE}" <<< "${dirs}")"
@@ -742,7 +742,7 @@ if [[ -f "${PORT_ETC}/package.use" ]];then
 	diff_ask "${file}" "${tmp_file}"
 	[[ ! -s "${file}" ]] && remove_ask "${file}"
 elif [[ -d "${PORT_ETC}/package.use" ]];then
-	for f in `find ${PORT_ETC}/package.use/ -type f`;do
+	for f in `find ${PORT_ETC}/package.use/ -type f \! -name '*~' \! -name '*.bak'`;do
 		if [[ -s "${f}" ]];then
 			file="${f}"
 			tmp_file="$(mktemp)"
@@ -910,7 +910,7 @@ d_to_f(){
 			tmp_file="$(mktemp)"
 			file="${PORT_ETC}/${package##*/}"
 			touch "${file}"
-			for subfile in `find "${package}" -type f \! -name "*~" | sort`;do
+			for subfile in `find "${package}" -type f \! -name '*~' \! -name '*.bak' | sort`;do
 				while read line;do
 					echo "${line}" >> "${tmp_file}"
 				done < "${subfile}"

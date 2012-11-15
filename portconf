@@ -479,12 +479,11 @@ not_if(){
 	if [[ -n "${atoms}" ]];then
 		while read atom;do
 			while read category pn ver rev slot;do
-				sw="$(sed -e 's|^=|= |g' -e 's|^>=|>= |g' -e 's|^>|> |g' -e 's|<|< |g'\
-				-e 's| <|<|g' -e 's| =|=|g' -e 's|~|~ |g' -e 's|=|= |g' <<< "${category}" )"
+				sw="$(sed -e 's|^=|= |g;s|^>=|>= |g;s|^>|> |g;s|<|< |g;s| <|<|g;s| =|=|g;s|~|~ |g;s|=|= |g' <<< "${category}")"
 				if [[ "${category}" == "${sw}" ]];then
 					unset sw
 				else
-					sw="$(awk '{print $1}' <<< "${sw}" )"
+					sw="$(awk '{print $1}' <<< "${sw}")"
 					category="${category##${sw}}"
 				fi
 
@@ -492,6 +491,7 @@ not_if(){
 
 				if [[ -n "${rev}" ]] && [[ -z "${slot}" ]] && `grep -q \: <<< "${rev}"`;then
 					slot="${rev}"
+					unset rev
 				fi
 				slot="${slot#:}"
 				pn="${pn%:}"
@@ -926,6 +926,147 @@ d_to_f(){
 	done <<< "`ls -d1 ${PORT_ETC}/package* | grep -v "~"`"
 }
 ############################################################################
+################ version diff ##############################################
+ver_diff(){
+	check="$(versionsort ${1} ${2} 2>/dev/null | tail -n1)"
+	[[ "${check}" == "${1}" && "${check}" != "${2}" ]] && echo 1 # ${1} > ${2}
+	[[ "${check}" == "${2}" && "${check}" != "${1}" ]] && echo 2 # ${2} > ${1}
+	[[ "${check}" == "${1}" && "${check}" == "${2}" ]] && echo 0 # ${1} == ${2}
+}
+############################################################################
+################ version between ###########################################
+ver_btwn(){
+	for between in ${3};do
+		if [[ "$(ver_diff "${1}" "${between}")" == "1" && "$(ver_diff "${2}" "${between}")" == "2" ]];then
+			echo "1" # we have one_or_more version between ${1} and ${2}
+			break
+		fi
+	done
+}
+############################################################################
+package_envs(){
+	for atom in ${1};do
+		while read category pn ver rev slot;do
+			sw="$(sed -e 's|^=|= |g;s|^>=|>= |g;s|^>|> |g;s|<|< |g;s| <|<|g;s| =|=|g;s|~|~ |g;s|=|= |g' <<< "${category}")"
+			if [[ "${category}" == "${sw}" ]];then
+				sw="(null)"
+			else
+				sw="$(awk '{print $1}' <<< "${sw}")"
+				category="${category##${sw}}"
+			fi
+			[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
+			if [[ -n "${rev}" && -z "${slot}" ]] && grep -q \: <<< "${rev}";then
+				slot="${rev}"
+				unset rev
+			fi
+			slot="${slot#:}"
+			pn="${pn%:}"
+			[[ -z "${rev}" ]] && rev="(null)"
+			[[ -z "${slot}" ]] && slot="(null)"
+			echo "${sw} ${category} ${pn} ${ver} ${rev} ${slot} ${file}"
+		done <<< `qatom "${atom}"`
+	done
+}
+############################################################################
+################ mask/unmask trash #########################################
+all_mask_trash(){
+	mask_trash(){
+		masked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
+		MASKED+="$(package_envs "${masked}")"$'\n'
+	}
+	file_or_dir "package.mask" "Preparing atoms in" "mask_trash"
+	unmask_trash(){
+		unmasked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
+		UNMASKED+="$(package_envs "${unmasked}")"$'\n'
+	}
+	file_or_dir "package.unmask" "Preparing atoms in" "unmask_trash"
+}
+mask_trash(){
+	slot_output(){
+		if [[ "${mslot}" != "(null)" ]];then
+			echo -e "${red}Incorrect${restore}: ${mcategory}/${mpn}:${mslot}"
+		else
+			echo -e "${red}Incorrect${restore}: ${mcategory}/${mpn}"
+		fi
+		TRASH+="${mfile} ${mcategory}/${mpn}"$'\n'
+		unset msw mcategory mpn mver mrev mslot mfile usw ucategory upn uver urev uslot ufile
+		continue
+	}
+	non_slot_output(){
+		echo -e "${red}Incorrect${restore}: ${msw}${mcategory}/${mpn}-${mver}"
+		TRASH+="${mfile} ${msw}${mcategory}/${mpn}-${mver}"$'\n'
+		unset msw mcategory mpn mver mrev mslot mfile usw ucategory upn uver urev uslot ufile
+		continue
+	}
+	all_mask_trash
+	###### m->masked; u->unmasked
+	while read msw mcategory mpn mver mrev mslot mfile;do
+		while read usw ucategory upn uver urev uslot ufile;do
+			[[ "${mrev}" == "(null)" ]] && unset mrev || mver="${mver}-${mrev}"
+			[[ "${urev}" == "(null)" ]] && unset urev || uver="${uver}-${urev}"
+			[[ "${mver}" == "(null)" ]] && unset mver
+			[[ "${uver}" == "(null)" ]] && unset uver
+
+			if [[ -n "${mver}" || -n "${uver}" ]];then
+				export OVERLAYS_LIST="no"
+				export VERSIONONLY='<version> '
+				export FORMAT='<availableversions:VERSIONONLY>'
+				versions="$(eix -e "${mcategory}/${mpn}")"
+				oldest="$(awk '{print $1}' <<< "${versions}")"
+			fi
+
+			if [[ -n "${mver}" && -n "${uver}" ]];then
+				versions_diff="$(ver_diff "${mver}" "${uver}")"
+				versions_btwn="$(ver_btwn "${uver}" "${mver}" "${versions}")"
+			fi
+
+			if [[ "${msw}" != "(null)" ]];then
+				if [[ "${usw}" == "(null)" && "${uslot}" == "(null)" ]];then
+					non_slot_output
+				elif [[ "${msw}" == ">" || "${msw}" == ">=" ]];then
+					if [[ "${usw}" == ">" || "${usw}" == ">=" ]];then
+						if [[ "${versions_diff}" != "1" && -z "${versions_btwn}" ]];then
+							non_slot_output
+						fi
+					fi
+				elif [[ "${msw}" == "<" || "${msw}" == "<=" ]];then
+					if [[ "${usw}" == "<" || "${usw}" == "<=" ]];then
+						if [[ "${versions_diff}" != "1" ]];then
+							non_slot_output
+						fi
+					fi
+				fi
+			else
+				if [[ "${mslot}" == "${uslot}" ]];then
+					if [[ "${usw}" == ">=" || "${usw}" == ">" ]];then
+						if [[ "$(ver_diff "${uver}" "${oldest}")" != "1" ]];then
+							slot_output
+						fi
+					elif [[ "${usw}" == "<"  && "$(ver_diff "${uver}" "${oldest}")" == "1" ]];then
+						slot_output
+					elif [[ "${usw}" == "<=" && "$(ver_diff "${uver}" "${oldest}")" != "1" ]];then
+						slot_output
+					elif [[ "${usw}" == "(null)" ]];then
+						slot_output
+					fi
+				fi
+			fi
+		done <<< "`grep " ${mcategory} ${mpn} " <<< "${UNMASKED}"`"
+	done <<< "${MASKED}"
+
+	files="$(awk '{print $1}' <<< "${TRASH}" | sort -u)"
+	for target in ${files};do
+		tmp_file="$(mktemp)"
+		cp "${target}" "${tmp_file}"
+		incorrect="$(grep ${target} <<< "${TRASH}" | sed -e "s|${target} ||g")"
+		for trash_atom in ${incorrect};do
+			sed -e "s|^${trash_atom}.*||" -e '/^$/d' -e 's/[ \t]*$//' -i "${tmp_file}"
+		done
+	diff_ask "${target}" "${tmp_file}"
+	done
+	unset TRASH OVERLAYS_LIST VERSIONONLY FORMAT MASKED UNMASKED versions oldest versions_diff versions_btwn
+}
+############################################################################
 ################ help ######################################################
 help_pc(){
 echo -e \
@@ -949,6 +1090,7 @@ ${contrast}\${KEYWORDS}${restore}:
 	--keyword-one, -ko:          Save only latest defined keyword.
 ${contrast}Trash${restore}:
 	--trash, -t:                 Delete not_founded/not_installed entries.
+	--stupid-mask, -sm           Remove incorrect masked atoms.
 	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 	--rm-comments, -c:           Delete lines starting with comment.
 	--rm-all-comments, -ac:      Delete all comments.
@@ -1027,6 +1169,9 @@ for opt in ${opts};do
 		env_not_installed;
 		empty_files
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
+	--stupid-mask | -sm )
+		backup;
+		mask_trash;;
 	--force-trash | -ft )
 		backup;
 		not_found;

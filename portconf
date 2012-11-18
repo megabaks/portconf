@@ -653,7 +653,7 @@ check_uses(){
 		tput rc
 
 		ALL_USE=" $(eix --end "${category}/${pn}")" || continue
-		ALL_USE="$(echo -e "${ALL_USE}" | sed -e 's| +| |g;s| -| |g' | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
+		ALL_USE="$(echo -e "${ALL_USE}" | sed -e 's| +| |g;s| -| |g;s|(+)||g' | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
 		LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" $'\n' | sort -u)"
 		USES="$(sed -e 's|^-||g' <<< "${LOCAL}")"
 		for use in ${USES};do

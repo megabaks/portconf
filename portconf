@@ -829,7 +829,7 @@ not_found(){
 			[[ -n "${line}" ]] && sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${tmp_file}
 			diff_ask "${file}" "${tmp_file}"
 		elif [[ -n "${line}" && -d "${file}" ]];then
-			for package in `grep -RH "${line//'-'/\-}" "${file}"/ | awk -F \: '{print $1}'`;do
+			for package in `grep -RH "${line//'*'/\*}" "${file}"/ | awk -F \: '{print $1}'`;do
 					tmp_package="$(mktemp)"
 					cp "${package}" "${tmp_package}"
 					echo -e "${red}Incorrect:${restore} ${line}"

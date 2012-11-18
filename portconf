@@ -231,13 +231,13 @@ diff_ask(){
 				[[ -n "${string}" ]] && plus="$(cat "${2}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || plus="X"
 				[[ -n "${string}" ]] && minus="$(cat "${1}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || minus="X"
 				[[ "${minus}" != "X" ]] && for x in ${minus};do
-					[[ "$(sed -n "${x}p" ${1})" == "$(sed -n "${x}p" ${2})" ]] &&\
+					[[ "$(sed -n "${x}p" ${1} 2>/dev/null)" == "$(sed -n "${x}p" ${2} 2>/dev/null)" ]] &&\
 					minus="${minus//${x}/}" && minus_exist=" == line ${contrast}${x}${restore}"
 				done
 				minus="${minus# }"
 				minus="${minus% }"
 				[[ "${plus}" != "X" ]] && for z in ${plus};do
-					[[ "$(sed -n "${z}p" ${1})" == "$(sed -n "${z}p" ${2})" ]] &&\
+					[[ "$(sed -n "${z}p" ${1} 2>/dev/null)" == "$(sed -n "${z}p" ${2} 2>/dev/null)" ]] &&\
 					plus="${plus//${z}/}"  && plus_exist=" == line ${contrast}${x}${restore}"
 				done
 				plus="${plus# }"
@@ -326,8 +326,8 @@ remove_ask(){
 ############################################################################
 ################ sort_packages #############################################
 sort_uniq_files(){
-	tmp_sort="$(mktemp)"
-	for package in `find ${PORT_ETC}/ -type f -name "package.*" \! -name '*~' \! -name '*.bak'`;do
+	for package in `find ${PORT_ETC}/ -type f \! -name '*~' \! -name '*.bak' | grep "/package\."`;do
+		tmp_sort="$(mktemp)"
 		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
 
 		all_atoms="$(awk '{print $1}' "${package}" | grep -v "^#"| sort -u)"
@@ -337,6 +337,7 @@ sort_uniq_files(){
 		done <<< "${all_atoms}"
 
 		sed -e '/^$/d' -e 's/[ \t]*$//' -i ${tmp_sort}
+		sort -u "${tmp_sort}" -o "${tmp_sort}" 2>/dev/null
 		diff_ask "${package}" "${tmp_sort}"
 		eend $? 2>/dev/null
 	done
@@ -414,12 +415,13 @@ sort_uses(){
 		else
 			echo "${atom} ${uses}" >> "${tmp_file}"
 		fi
-		unset atom_opts uses
+		unset atom atom_opts option options uses comment
 	done
 	cp "${tmp_file}" "${striped}" 2>/dev/null
 
 	while read atom opt;do
 		[[ -z "${opt}" ]] && sed -e "s|^${atom} ||" -i "${striped}" 2>/dev/null
+		unset atom opt
 	done < "${tmp_file}"
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
 	sort -u "${striped}" -o "${striped}" 2>/dev/null
@@ -827,7 +829,7 @@ not_found(){
 			[[ -n "${line}" ]] && sed -e "s|`echo $line`$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i ${tmp_file}
 			diff_ask "${file}" "${tmp_file}"
 		elif [[ -n "${line}" && -d "${file}" ]];then
-			for package in `grep -RH "${line//'*'/\*}" "${file}"/ | awk -F \: '{print $1}'`;do
+			for package in `grep -RH "${line//'-'/\-}" "${file}"/ | awk -F \: '{print $1}'`;do
 					tmp_package="$(mktemp)"
 					cp "${package}" "${tmp_package}"
 					echo -e "${red}Incorrect:${restore} ${line}"
@@ -1193,7 +1195,7 @@ for opt in ${opts};do
 		sort_use_file;
 		invalid_uses;
 		use_makeconf;
-		sort_keywords;
+		uniq_keywords;
 		empty_files
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
 	--files-2-dirs | -f2d )

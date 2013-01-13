@@ -79,7 +79,11 @@ profile_use(){
 ############################################################################
 ################ current_profile ###########################################
 current_profile(){
-	target="$(readlink /etc/make.profile | sed 's|.*/profiles/||')"
+	if [[ -h "/etc/make.profile" ]];then
+		target="$(readlink /etc/make.profile | sed 's|.*/profiles/||')"
+	else
+		target="$(readlink /etc/portage/make.profile | sed 's|.*/profiles/||')"
+	fi
 	profile_uses="$(profile "/usr/portage/profiles/${target}")"
 	USEs="$(sort_passed_uses "${PROFILE}")"
 	echo -e "${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`

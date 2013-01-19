@@ -1086,7 +1086,7 @@ ${contrast}Common${restore}:
 	--regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
 	--restore, -r:               Rolling up /etc/portage to one of available states.
 	--backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
-	--sort, -s:                  Sort entries alphabetically.
+	--sort, -s:                  Sort entries alphabetically, --use-sort, --keyword-uniq.
 	--yes, -y:                   Auto answer (Yes).
 	--pretend, -p:               Check only.
 	--help, -h, -?, h:           This help.
@@ -1150,6 +1150,8 @@ for opt in ${opts};do
 	--backup | -b ) backup;;
 	--sort | -s )
 		backup;
+		sort_use_file;
+		uniq_keywords;
 		sort_uniq_files;;
 	--use-sort | -us )
 		backup;

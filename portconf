@@ -782,6 +782,47 @@ fi
 tput cnorm
 }
 ############################################################################
+################ incorrect uses in make.conf ###############################
+make_conf_use() {
+	defined_flags="$(grep "${1}=\".*\"" ${makefile})"
+	[[ -z "${defined_flags}" ]] && defined_flags="$(sed -ne "/${1}=\"/,/\"/p" ${makefile})"
+	echo "${defined_flags}"
+}
+
+hell_parser(){
+	sed -e 's|[[:space:]]| |g' -e :a -e '/\\$/N; s/\\\n//; ta' | \
+	cut -d\" -f2 | tr "[[:space:]]" $'\n' | sed '/^$/d;s|^-||g'  | sort -u
+}
+
+invalid_uses_make(){
+	[[ -f "/etc/make.conf" ]] && makefile="/etc/make.conf"
+	[[ -f "${PORT_ETC}/make.conf" ]] && makefile="${PORT_ETC}/make.conf"
+	echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile}${restore}"
+	tmp_file="$(mktemp)"
+	cp "${makefile}" "${tmp_file}"
+
+	vars_in_USE="$(make_conf_use USE | hell_parser | grep '\$' | tr -d '${}')"
+	real_uses="$(eix --print-all-useflags | sed 's|^[-+]||g;s|^(+)||g' | sort -u)"
+	for var in ${vars_in_USE} USE;do
+		sub_uses="$(make_conf_use ${var} | hell_parser | grep -v '\$')"
+		for use in ${sub_uses};do
+			if ! grep -q "^${use}$" <<< "${real_uses}";then
+				echo -ne "Invalid use ${contrast} ${var}: ${red}${use}${restore}" | column -t
+				invalid_uses+=" ${use}"
+			fi
+		done
+	done
+
+	if [[ -n "${invalid_uses}" ]];then
+		for iuse in ${invalid_uses};do
+			line="$(grep "\<${iuse}\>" ${tmp_file})"
+			fixed_line="$(sed "s|[- \t]${iuse}||" <<< "${line}")"
+			sed -e "s|${line%\\}|${fixed_line%\\}|" -i "${tmp_file}"
+		done
+	fi
+	diff_ask "${makefile}" "${tmp_file}"
+}
+############################################################################
 ################ not_found #################################################
 not_found(){
 	TRASH="$(LANG=en eix -Ttc 2>/dev/null)"
@@ -1158,7 +1199,8 @@ for opt in ${opts};do
 		sort_use_file;;
 	--use-invalid | -ui )
 		backup;
-		invalid_uses
+		invalid_uses;
+		invalid_uses_make;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
 	--use-make | -um )
 		backup;
@@ -1167,6 +1209,7 @@ for opt in ${opts};do
 		backup;
 		sort_use_file;
 		invalid_uses;
+		invalid_uses_make;
 		use_makeconf
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
 	--keyword-one | -ko )
@@ -1204,6 +1247,7 @@ for opt in ${opts};do
 		env_not_installed;
 		sort_use_file;
 		invalid_uses;
+		invalid_uses_make;
 		use_makeconf;
 		uniq_keywords;
 		empty_files

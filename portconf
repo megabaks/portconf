@@ -353,7 +353,12 @@ sort_uniq_files(){
 ############################################################################
 ################ file or dir... ############################################
 file_or_dir(){
-	for target in $(ls -d1 ${PORT_ETC}/${1} 2>/dev/null);do
+	founded="$(ls -d1 ${PORT_ETC}/${1} 2>/dev/null)"
+	if [[ -z "${founded}" ]];then
+		echo -e "${underline}${2}${restore}\n${contrast}${PORT_ETC}/${1}${restore}: No such file o directory${restore}"
+		eend 1 2>/dev/null
+	fi
+	for target in ${founded};do
 		if [[ -f "${target}" ]];then
 			file="${target}"
 			if [[ -s ${file} ]];then
@@ -1118,6 +1123,39 @@ mask_trash(){
 	unset TRASH OVERLAYS_LIST VERSIONONLY FORMAT MASKED UNMASKED versions oldest versions_diff versions_btwn
 }
 ############################################################################
+################ looking trash #############################################
+remove_trash(){
+	tmp_file="$(mktemp)"
+	cp "${file}" "${tmp_file}"
+	for atom in `eix -Tc#`;do
+		lines="$(grep "${atom}" "${file}")"
+		while read line;do
+			entry="$(qatom "$(tr -d '<>=~#' <<< "${line}")" | awk '{print $1,$2}' | tr ' ' '/')"
+			if [[ "${atom}" == "${entry}" ]];then
+				if `eix -Iqe ${atom}`;then
+					echo -e "stupid entry:              ${green}${line}${restore}"
+				else
+					echo -e "stupid entry (${red}!${restore}installed): ${green}${line}${restore}"
+				fi
+				sed -e "s|${line}||" -e '/^$/d' -i "${tmp_file}"
+				break
+			fi
+		done <<< "${lines}"
+	done
+	diff_ask "${file}" "${tmp_file}"
+	eend $? 2>/dev/null
+}
+############################################################################
+################ stupid unmask #############################################
+stupid_unmask(){
+	export REDUNDANT_IF_IN_UNMASK="all"
+	export REDUNDANT_IF_IN_MASK="no"
+	export TEST_FOR_NONEXISTENT="true"
+	export REDUNDANT_IF_UNMASK_NO_CHANGE="all"
+	file_or_dir "package.unmask" "Checking stupid unmasks:" "remove_trash"
+	unset REDUNDANT_IF_IN_UNMASK REDUNDANT_IF_IN_MASK TEST_FOR_NONEXISTENT REDUNDANT_IF_UNMASK_NO_CHANGE
+}
+############################################################################
 ################ help ######################################################
 help_pc(){
 echo -e \
@@ -1133,7 +1171,7 @@ ${contrast}Common${restore}:
 	--help, -h, -?, h:           This help.
 ${contrast}\${USE}${restore}:
 	--use-sort, -us:             Sort useflags. Remove doubles and preserve only last defined state (on/off).
-	--use-invalid, -ui:          Delete invalid or global defined useflags from package.use.
+	--use-invalid, -ui:          Delete invalid or twice global-defined useflags.
 	--use-make, -um:             Delete profile defined useflags from make.conf.
 	--use-full, -uf:             An analog '-us -ui -um'.
 ${contrast}\${KEYWORDS}${restore}:
@@ -1141,8 +1179,9 @@ ${contrast}\${KEYWORDS}${restore}:
 	--keyword-one, -ko:          Save only latest defined keyword.
 ${contrast}Trash${restore}:
 	--trash, -t:                 Delete not_founded/not_installed entries.
-	--stupid-mask, -sm           Remove incorrect masked atoms.
 	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
+	--stupid-mask, -sm           Remove incorrect masked atoms.
+	--stupid-unmask, -sum        Remove incorrect unmasked atoms.
 	--rm-comments, -c:           Delete lines starting with comment.
 	--rm-all-comments, -ac:      Delete all comments.
 	--full, -f:                  An analog '-s -t -uf -ku'
@@ -1210,7 +1249,7 @@ for opt in ${opts};do
 		sort_use_file;
 		invalid_uses;
 		invalid_uses_make;
-		use_makeconf
+		use_makeconf;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
 	--keyword-one | -ko )
 		backup;
@@ -1227,6 +1266,9 @@ for opt in ${opts};do
 	--stupid-mask | -sm )
 		backup;
 		mask_trash;;
+	--stupid-unmask | -sum )
+		backup;
+		stupid_unmask;;
 	--force-trash | -ft )
 		backup;
 		not_found;

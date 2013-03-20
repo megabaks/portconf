@@ -1,0 +1,180 @@
+#!/bin/bash
+
+PKGDB="/var/db/pkg"
+world="/var/lib/portage/world"
+
+green="\033[01;32m"
+red="\033[01;31m"
+restore="\033[00m"
+contrast="\033[1m"
+
+tmp_world="$(mktemp)"
+cp "${world}" "${tmp_world}"
+############# for test only
+backup="${world}-test-backup"
+cp "${world}" "${backup}"
+
+fix_atom(){
+	for atom in ${1};do
+		my_atom="${atom%%::*}"
+		if grep -q ':' <<< "${my_atom}";then
+			slot="${my_atom/*:/:}"
+			my_atom="${my_atom%${slot}}"
+			my_atom="$(qatom "`qlist -CISve ${my_atom//+/\+} | grep "${slot}"`")"
+		else
+			my_atom="$(qatom "`qlist -CISve ${my_atom//+/\+}`")"
+		fi
+		while read x;do
+			if awk '{print $4}' <<< "${x}" | grep -q ':';then
+				real_atom="$(awk '{print $1,$2,$3}' <<< "${x}" | sed 's| |/|1;s| |-|g')"
+			elif awk '{print $5}' <<< "${x}" | grep -q ':';then
+				real_atom="$(awk '{print $1,$2,$3,$4}' <<< "${x}" | sed 's| |/|1;s| |-|g')"
+			fi
+		done <<< "${my_atom}"
+		echo "${real_atom}"
+	done | sort -u
+}
+
+one_slot(){
+	export OVERLAYS_LIST="no"
+	export FORMAT='<availableversions:SLOTONLY>'
+	export SLOTONLY='<slot>\n'
+	if [[ "$(eix -e "${1}" | sort -u | wc -l)" == "1" ]];then
+		return 0
+	else
+		return 1
+	fi
+}
+
+while read line;do
+	tput sc
+	tput civis
+	echo -ne "$((count++)) packages installed"
+	tput rc
+	installed+="`fix_atom "${line}"`"$'\n'
+done <<< "$(qlist -CIS)"
+
+echo
+
+[[ "${1}" == "--deep" ]] && deps+="$(qdepends -rQC 2>&1 | grep DEPEND | sed 's|.*DEPEND:||' | tr "[:space:]" $'\n' |\
+									sed 's|\[.*||g' | tr -d '<>=~()|' | grep -v '!' | sed '/^$/d' | sort -u)"$'\n'
+
+check_pkg(){
+	while read pkg;do
+		tput sc
+		tput civis
+		echo -ne "checking deps for: ${green}${pkg}${restore}                                                "
+		tput rc
+		for opt in r d;do
+			deps+="$(qdepends -C${opt} "${pkg}" 2>/dev/null | tr "[:space:]" $'\n' | sed 's|\[.*||g' | tr -d '<>=~' | grep -v '!' | grep -v "${pkg//\\+/+}:")"$'\n'
+		done
+	done <<< "${1}"
+	deps="$(sort -u <<< "${deps}")"
+	while read dep;do
+		if grep -q ':.*/' <<< "${dep}";then
+			trash="${dep%/*}"
+		else
+			trash="${dep}"
+		fi
+		if [[ -n "${trash}" ]];then 
+			full+="${trash}"$'\n'
+			tput sc
+			tput civis
+			echo -ne "preparing dep: ${green}${trash}${restore}                                                "
+			tput rc
+		fi
+	done <<< "${deps}"
+	unset deps
+}
+
+check_pkg "${installed}"
+
+full="$(sort -u <<< "${full}" | sed '/^$/d')"
+
+while read bdep;do
+	tput sc
+	tput civis
+	echo -ne "checking dep: ${red}${bdep}${restore}                                               "
+	tput rc
+	bdep="$(qatom "${bdep}")"
+	if grep -q ':' <<< "${bdep}";then
+		if awk '{print $4}' <<< "${bdep}" | grep -q ':';then
+			invalid+="$(awk '{print $1,$2,$4}' <<< "${bdep}" | sed 's| |/|1;s| ||')"$'\n'
+			if one_slot "$(awk '{print $1,$2}' <<< "${bdep}" | sed 's| |/|')";then
+				invalid+="$(awk '{print $1,$2}' <<< "${bdep}" | sed 's| |/|')"$'\n'
+			fi
+		elif awk '{print $5}' <<< "${bdep}" | grep -q ':';then
+			invalid+="$(awk '{print $1,$2,$5}' <<< "${bdep}" | sed 's| |/|1;s| ||')"$'\n'
+			if one_slot "$(awk '{print $1,$2}' <<< "${bdep}" | sed 's| |/|')";then
+				invalid+="$(awk '{print $1,$2}' <<< "${bdep}" | sed 's| |/|')"$'\n'
+			fi
+		fi
+	else
+		invalid+="$(awk '{print $1,$2}' <<< "${bdep}" | sed 's| |/|')"$'\n'
+	fi
+done <<< "${full}"
+
+while read line;do
+	if grep -q "^${line}$" "${tmp_world}";then
+		echo -e "trash: ${red}${line}${restore}"
+		sed -e "s|^${line}$||" -e '/^$/d' -i "${tmp_world}"
+	fi
+done <<< "$(sort -u <<< "${invalid}" | sed '/^$/d')"
+
+tput cnorm
+echo
+echo -e "${contrast}world original:${restore} $(cat "${world}" | wc -l) lines"
+echo -e "${contrast}world fixed:${restore} $(cat "${tmp_world}" | wc -l) lines"
+mv "${tmp_world}" "${world}"
+
+pretend="$(emerge -pc | grep 'All selected packages:' | sed 's|.*:||1' | tr ' ' $'\n')"
+
+PS3=`echo -e "${contrast}Choose package which you want save:${restore} "`
+
+choose_target(){
+	select target in ${pretend};do
+		echo "=${target}"
+		break
+	done
+}
+
+add_in_world(){
+	notrash_pkgs+=" $(choose_target)"
+	for tp in ${notrash_pkgs};do
+		pretend="$(sed -e "s|^${tp#=}$||" -e '/^$/d' <<< "${pretend}")"
+	done
+}
+
+echo -e "\n${pretend// /$'\n'}"
+echo -ne "\n${contrast}Would you like save some packages?${restore} [${green}Yes${restore}/${red}No${restore}] "
+while read x;do
+	case ${x} in
+		Yes | YES | yes | Y | y | "" )
+			add_in_world;
+			while [[ -z "${enough}" && "$(echo "${pretend// /$'\n'}" | sed '/^$/d' | wc -l)" != "0" ]];do
+				echo -ne "${contrast}More?${restore} [${green}Yes${restore}/${red}No${restore}] "
+				while read y;do
+					case ${y} in
+						Yes | YES | yes | Y | y | "" )
+							add_in_world;
+							break;;
+						No | NO | no | N | n )
+							enough="1"
+							break;;
+						* ) echo -ne "Sorry, response '${y}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+							continue;;
+					esac
+				done
+			done
+			break;;
+		No | NO | no | N | n )
+			break;;
+		* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+			continue;;
+	esac
+done
+[[ -n "${notrash_pkgs}" ]] && emerge --nodeps --noreplace ${notrash_pkgs}
+
+############### for test only
+echo "restore world: thanks for test "
+mv "${backup}" "${world}"

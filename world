@@ -87,7 +87,7 @@ check_pkg(){
 	unset deps
 }
 
-check_pkg "${installed}"
+check_pkg "$(sort -u <<< "${installed}" | sed '/^$/d')"
 
 full="$(sort -u <<< "${full}" | sed '/^$/d')"
 

@@ -1277,8 +1277,9 @@ regen_world(){
 		unset enough
 	done
 	cp "${WORLD}" "${tmp_world}"
-	mv "${ex_world}" "${WORLD}"
+	cp "${ex_world}" "${WORLD}"
 	diff_ask "${WORLD}" "${tmp_world}"
+	rm "${ex_world}"
 	eend $? 2>/dev/null
 }
 ############################################################################

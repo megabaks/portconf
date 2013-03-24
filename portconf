@@ -183,7 +183,7 @@ Create temporary cache?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 ############################################################################
 ################ backup ####################################################
 backup(){
-	[[ -d "${BRDIR}" ]] || mkdir "${BRDIR}"
+	[[ -d "${BRDIR}" ]] || mkdir -p "${BRDIR}"
 	tarballs="$(ls -1 --color=never ${BRDIR})"
 	oldest="$(head -n1 <<< "${tarballs}")"
 	newest="$(tail -n1 <<< "${tarballs}")"
@@ -217,7 +217,7 @@ backup(){
 ################ world_backup ##############################################
 world_backup(){
 	world_dir="${BRDIR}/world"
-	[[ -d "${world_dir}" ]] || mkdir "${world_dir}"
+	[[ -d "${world_dir}" ]] || mkdir -p "${world_dir}"
 	tarballs="$(ls -1 --color=never ${world_dir})"
 	oldest="$(head -n1 <<< "${tarballs}")"
 	newest="$(tail -n1 <<< "${tarballs}")"

@@ -16,6 +16,7 @@ underline="\033[4m"
 PKGDB="/var/db/pkg"
 BRDIR="/var/lib/portconf"
 PORT_ETC="/etc/portage"
+WORLD="/var/lib/portage/world"
 [[ -f "/etc/portconf.conf" ]] && . /etc/portconf.conf
 [[ -z "${COUNT}" ]] && COUNT="10"
 ############################################################################
@@ -199,7 +200,7 @@ backup(){
 		if (( "${count}" >= "${COUNT}" ));then
 			rm "${BRDIR}/${oldest}"
 		fi
-		echo -e "Backups: ${green}creating${restore}..."
+		echo -e "/etc/portage backup: ${green}creating${restore}..."
 		name="${BRDIR}/portage_$(date +%g.%m.%d-%H:%M).tar.bz2"
 		if [[ -f "/etc/make.conf" ]];then
 			tar -jcf "${name}" -C /etc/ portage make.conf
@@ -208,7 +209,33 @@ backup(){
 		fi
 		eend $? 2>/dev/null
 	else
-		echo -e "Backups: ${green}already up-to-date${restore}"
+		echo -e "/etc/portage backups: ${green}already up-to-date${restore}"
+		eend $? 2>/dev/null
+	fi
+}
+############################################################################
+################ world_backup ##############################################
+world_backup(){
+	world_dir="${BRDIR}/world"
+	[[ -d "${world_dir}" ]] || mkdir "${world_dir}"
+	tarballs="$(ls -1 --color=never ${world_dir})"
+	oldest="$(head -n1 <<< "${tarballs}")"
+	newest="$(tail -n1 <<< "${tarballs}")"
+	count="$( wc -l <<< "${tarballs}")"
+	[[ -z "${count}" ]] && count="0"
+	world_update="$(timestamp ${WORLD})"
+	portconf_update="$(timestamp ${world_dir}/*)"
+	[[ -z "${portconf_update}" ]] && portconf_update="0"
+	if (( "${world_update}" > "${portconf_update}" ));then
+		if (( "${count}" >= "${COUNT}" ));then
+			rm "${world_dir}/${oldest}"
+		fi
+		echo -e "world backup: ${green}creating${restore}..."
+		name="${world_dir}/world_$(date +%g.%m.%d-%H:%M).tar.bz2"
+		tar -jcf "${name}" -C ${WORLD%world} world
+		eend $? 2>/dev/null
+	else
+		echo -e "world backups: ${green}already up-to-date${restore}"
 		eend $? 2>/dev/null
 	fi
 }
@@ -224,6 +251,22 @@ restore(){
 		echo -e "Rolling back ${PORT_ETC} to the state ${green}${answer}${restore}"
 		rm -rf ${PORT_ETC}/*
 		tar -xf "${BRDIR}/portage_${answer}.tar.bz2" -C /etc/ 2>/dev/null
+		eend $? 2>/dev/null
+		break
+	done
+}
+############################################################################
+################ world_restore #############################################
+world_restore(){
+	world_dir="${BRDIR}/world"
+	tarballs="$(ls -1 --color=never ${world_dir})"
+	tarballs="${tarballs//.tar.bz2/}"
+	tarballs="${tarballs//world_/}"
+	PS3=`echo -e "${contrast}Choose number:${restore} "`
+	echo -e "${contrast}Available backups${restore}:"
+	select answer in ${tarballs};do
+		echo -e "Rolling back ${WORLD} to the state ${green}${answer}${restore}"
+		tar -xf "${world_dir}/world_${answer}.tar.bz2" -C ${WORLD%world} 2>/dev/null
 		eend $? 2>/dev/null
 		break
 	done
@@ -357,6 +400,7 @@ file_or_dir(){
 	if [[ -z "${founded}" ]];then
 		echo -e "${underline}${2}${restore}\n${contrast}${PORT_ETC}/${1}${restore}: No such file o directory${restore}"
 		eend 1 2>/dev/null
+		return 1
 	fi
 	for target in ${founded};do
 		if [[ -f "${target}" ]];then
@@ -395,7 +439,7 @@ rm_comments(){
 		diff_ask "${file}" "${tmp_file}"
 		eend $? 2>/dev/null
 	}
-	file_or_dir "package.*" "Checking comments:" "no_newline"
+	file_or_dir "package.*" "Checking comments:" "no_newline" || return 1
 }
 ############################################################################
 ################ rm_all_comments ###########################################
@@ -407,7 +451,7 @@ rm_all_comments(){
 		diff_ask "${file}" "${tmp_file}"
 		eend $? 2>/dev/null
 	}
-	file_or_dir "package.*" "Checking comments:" "no_newline_inline"
+	file_or_dir "package.*" "Checking comments:" "no_newline_inline"  || return 1
 }
 ############################################################################
 ################ sort_uses #################################################
@@ -445,7 +489,7 @@ sort_uses(){
 ############################################################################
 ################ package.use ###############################################
 sort_use_file(){
-	file_or_dir "package.use" "Sorting use flags in" "sort_uses"
+	file_or_dir "package.use" "Sorting use flags in" "sort_uses" || return 1
 }
 ############################################################################
 ################ one_keyword ###############################################
@@ -467,12 +511,12 @@ sort_keywords(){
 		diff_ask "${file}" "${tmp_file}"
 		eend $? 2>/dev/null
 	}
-	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "keys"
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "keys" || return 1
 }
 ############################################################################
 ################ uniq_keyword ##############################################
 uniq_keywords(){
-	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_uses" "set +f"
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_uses" "set +f" || return 1
 }
 ############################################################################
 ################ not_installed #############################################
@@ -1030,12 +1074,12 @@ all_mask_trash(){
 		masked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
 		MASKED+="$(package_envs "${masked}")"$'\n'
 	}
-	file_or_dir "package.mask" "Preparing atoms in" "mask_trash"
+	file_or_dir "package.mask" "Preparing atoms in" "mask_trash" || return 1
 	unmask_trash(){
 		unmasked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
 		UNMASKED+="$(package_envs "${unmasked}")"$'\n'
 	}
-	file_or_dir "package.unmask" "Preparing atoms in" "unmask_trash"
+	file_or_dir "package.unmask" "Preparing atoms in" "unmask_trash" || return 1
 }
 mask_trash(){
 	slot_output(){
@@ -1054,7 +1098,7 @@ mask_trash(){
 		unset msw mcategory mpn mver mrev mslot mfile usw ucategory upn uver urev uslot ufile
 		continue
 	}
-	all_mask_trash
+	all_mask_trash || return 1
 	###### m->masked; u->unmasked
 	while read msw mcategory mpn mver mrev mslot mfile;do
 		while read usw ucategory upn uver urev uslot ufile;do
@@ -1152,8 +1196,90 @@ stupid_unmask(){
 	export REDUNDANT_IF_IN_MASK="no"
 	export TEST_FOR_NONEXISTENT="true"
 	export REDUNDANT_IF_UNMASK_NO_CHANGE="all"
-	file_or_dir "package.unmask" "Checking stupid unmasks:" "remove_trash"
+	file_or_dir "package.unmask" "Checking stupid unmasks:" "remove_trash" || return 1
 	unset REDUNDANT_IF_IN_UNMASK REDUNDANT_IF_IN_MASK TEST_FOR_NONEXISTENT REDUNDANT_IF_UNMASK_NO_CHANGE
+}
+############################################################################
+################ regen_world ###############################################
+regen_world(){
+	tmp_world="$(mktemp)"
+	ex_world="$(mktemp)"
+	mv "${WORLD}" "${ex_world}"
+	installed="$(qlist -CI | sort -u)"
+	echo "${installed}" > "${WORLD}"
+	echo -e "Calculating dependencies"
+
+	pretend="$(emerge -eopd --columns --with-bdeps=y world 2>/dev/null | grep -v "blocks" | awk '/^\[/ {print $4}')" && eend 0 2>/dev/null
+	pretend+="$(qlist -CI `emerge -epO system | awk '/\[/ {print $4}'`)"$'\n'
+
+	for atom in ${installed};do
+		if ! grep -q "^${atom}$" <<< "${pretend}" && ! grep -q ".*-libs/" <<< "${atom}";then
+				echo "${atom}" >> "${tmp_world}"
+				echo -e "world++: ${green}${atom}${restore}"
+		fi
+	done
+	cp "${tmp_world}" "${WORLD}"
+
+	PS3=`echo -e "${contrast}Choose package which you want save:${restore} "`
+	choose_target(){
+		select target in ${pretend};do
+			echo "=${target}"
+			break
+		done
+	}
+	add_in_world(){
+		notrash_pkgs+=" $(choose_target)"
+		for tp in ${notrash_pkgs};do
+			pretend="$(sed -e "s|^${tp#=}$||" -e '/^$/d' <<< "${pretend}")"
+		done
+	}
+	ask(){
+		pretend="$(emerge -pc | grep 'All selected packages:' | sed 's|.*:||1' | tr ' ' $'\n')"
+		echo -e "\n${pretend// /$'\n'}"
+		if [[ -n "$(sed '/^$/d' <<< "${pretend}")" ]];then
+			echo -ne "\n${contrast}Would you like save some packages?${restore} [${green}Yes${restore}/${red}No${restore}] "
+			while read x;do
+				[[ -z "$(sed '/^$/d' <<< "${pretend}")" ]] && break
+				case ${x} in
+					Yes | YES | yes | Y | y | "" )
+						add_in_world;
+						while [[ -z "${enough}" && "$(echo "${pretend// /$'\n'}" | sed '/^$/d' | wc -l)" != "0" ]];do
+							echo -ne "${contrast}More?${restore} [${green}Yes${restore}/${red}No${restore}] "
+							while read y;do
+								case ${y} in
+									Yes | YES | yes | Y | y | "" )
+										add_in_world;
+										break;;
+									No | NO | no | N | n )
+										enough="1"
+										break;;
+									* ) echo -ne "Sorry, response '${y}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+										continue;;
+								esac
+							done
+						done
+						break;;
+					No | NO | no | N | n )
+						break;;
+					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+						continue;;
+				esac
+			done
+			[[ -n "$(sed '/^$/d' <<< "${notrash_pkgs}")" ]] && emerge -Own ${notrash_pkgs}
+		else
+			return 0
+		fi
+	}
+	for t in 1 2;do
+		[[ "${t}" == "1" ]] && echo -e "\nemerge -pc: ${green}check...${restore}"
+		[[ "${t}" == "2" ]] && echo -e "\nemerge -pc: ${green}recheck...${restore}"
+		ask
+		unset enough
+	done
+	cp "${WORLD}" "${tmp_world}"
+	cp "${ex_world}" "${WORLD}"
+	diff_ask "${WORLD}" "${tmp_world}"
+	eend $? 2>/dev/null
 }
 ############################################################################
 ################ help ######################################################
@@ -1163,8 +1289,8 @@ echo -e \
 available OPTIONS:
 ${contrast}Common${restore}:
 	--regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
+	--backup, -b:                Create backup for current /etc/portage state.
 	--restore, -r:               Rolling up /etc/portage to one of available states.
-	--backup, -b:                Create backup for current /etc/portage state.(enabled in all follow options)
 	--sort, -s:                  Sort entries alphabetically, --use-sort, --keyword-uniq.
 	--yes, -y:                   Auto answer (Yes).
 	--pretend, -p:               Check only.
@@ -1192,7 +1318,10 @@ ${contrast}Profile${restore}:
 	--all-profiles-use, -apu:    List \${USE} defined in profiles.
 	--profiles-use, -pu:         List \${USE} of profile.
 	--current-profile-use, -cpu: \${USE} of current profile.
-
+${contrast}world${restore}:
+	--world-backup, -wb:         Create backup for current world file state.
+	--world-restore, -wr:        Rolling up world file to one of available states.
+	--world-regen, -wg:          Regen(cleanup) the world file.(backup: auto)
 OPTIONS must be separated by SPACE."
 }
 ############################################################################
@@ -1226,8 +1355,8 @@ fi
 [[ -z "${@}" || -z "${opts}" ]] && help_pc
 for opt in ${opts};do
 	case "${opt}" in
-	--restore | -r ) restore;;
 	--backup | -b ) backup;;
+	--restore | -r ) restore;;
 	--sort | -s )
 		backup;
 		sort_use_file;
@@ -1292,7 +1421,9 @@ for opt in ${opts};do
 		invalid_uses_make;
 		use_makeconf;
 		uniq_keywords;
-		empty_files
+		mask_trash;
+		stupid_unmask;
+		empty_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}";;
 	--files-2-dirs | -f2d )
 		backup;
@@ -1303,6 +1434,11 @@ for opt in ${opts};do
 	--all-profiles-use | -apu ) all_use_all_profiles;;
 	--profiles-use | -pu ) profile_use;;
 	--current-profile-use | -cpu ) current_profile;;
+	--world-backup | -wb ) world_backup;;
+	--world-restore | -wr ) world_restore;;
+	--world-regen | -wg )
+		world_backup;
+		regen_world;;
 	--help | -h | -? | h ) help_pc;;
 	esac
 done

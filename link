@@ -6,6 +6,9 @@ red="\033[01;31m"
 restore="\033[00m"
 contrast="\033[1m"
 underline="\033[4m"
+timestamp(){
+	ls -dgo --time-style=+%s --color=never ${*} 2>/dev/null | awk '{print $4}' | sort | tail -n1
+}
 
 overlays(){
 	DEP_PATH="/var/cache/edb/dep"

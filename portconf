@@ -303,7 +303,7 @@ diff_ask(){
 		echo "###############################################"
 		echo -e "${full_diff%\\n}" | grep \:
 		echo "###############################################"
-		if [[ -z "${yes}" && -z "${pretend}" ]];then
+		if [[ -z "${yes}" && -z "${PRETEND}" ]];then
 			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 			while read x;do
 				case ${x} in
@@ -327,12 +327,12 @@ diff_ask(){
 						continue;;
 				esac
 			done
-		elif [[ -n "${yes}" && -z "${pretend}" ]];then
+		elif [[ -n "${yes}" && -z "${PRETEND}" ]];then
 			mv "${2}" "${1}" 2>/dev/null
 			chmod 0644 "${1}"
 			unset full_diff
 			return 0
-		elif [[ -z "${yes}" && -n "${pretend}" ]];then
+		elif [[ -z "${yes}" && -n "${PRETEND}" ]];then
 			unset full_diff
 			rm "${2}" 2>/dev/null
 			return 0
@@ -345,7 +345,7 @@ diff_ask(){
 ############################################################################
 ################ remove_ask ################################################
 remove_ask(){
-	if [[ -z "${yes}" && -z "${pretend}" ]];then
+	if [[ -z "${yes}" && -z "${PRETEND}" ]];then
 		echo -ne "${contrast}Remove${restore} ${green}${1}${restore}${contrast}?${restore} [${green}Yes${restore}/${red}No${restore}] "
 		while read x;do
 			case ${x} in
@@ -359,11 +359,11 @@ remove_ask(){
 			esac
 		done
 		eend $? 2>/dev/null
-	elif [[ -n "${yes}" && -z "${pretend}" ]];then
+	elif [[ -n "${yes}" && -z "${PRETEND}" ]];then
 		echo -e "${contrast}Removing${restore} ${green}${1}${restore}"
 		rm -rf ${1} 2>/dev/null
 		eend $? 2>/dev/null
-	elif [[ -z "${yes}" && -n "${pretend}" ]];then
+	elif [[ -z "${yes}" && -n "${PRETEND}" ]];then
 		eend 0 2>/dev/null
 	fi
 }
@@ -1516,7 +1516,7 @@ eix_dep_keys="--use-invalid
 -f"
 opts=" ${PORTCONF_DEFAULT_OPTS} ${@}"
 grep -q -e " \--yes\>" -e " \-y\>" <<< " ${opts}" && yes="1"
-grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${opts}" && pretend="1"
+grep -q -e " \--pretend\>" -e " \-p\>" <<< " ${opts}" && PRETEND="1"
 opts="$(sed -e 's| --yes\>||g;s| -y\>||g' -e 's| --pretend\>||g;s| -p\>||g' <<< " ${opts}")"
 if grep -q "${eix_dep_keys//\-/\\-}" <<< "${opts}";then
 	if grep -q -e " \--regen-cache\>" -e " \-rc\>" <<< " ${opts}";then

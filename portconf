@@ -1278,6 +1278,184 @@ regen_world(){
 	eend $? 2>/dev/null
 }
 ############################################################################
+################ unused repo and dep-cache #################################
+overlays(){
+	########## repo over layman
+	layman_path="$(awk '/storage[[:space:]].*:/ {print $3}' /etc/layman/layman.cfg)"
+	source "${layman_path}/make.conf" 2>/dev/null
+	layman_pkgdir="$(tr '[[:space:]]' $'\n' <<< "${PORTDIR_OVERLAY}" | sed '/^$/d')"
+	for repo_dir in ${layman_pkgdir};do
+		[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
+		[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+		layman_overlays+="${repo_dir} ${repo_name}"$'\n'
+	done
+
+	all_overlays="${layman_overlays}"
+
+	######### repo over PORTDIR_OVERLAY ----> used by portage
+	export "$(emerge --info 2>/dev/null | grep "^PORTDIR_OVERLAY=" | tr -d '"')"
+	portage_pkdir="${PORTDIR_OVERLAY}"
+	unset PORTDIR_OVERLAY
+	for repo_dir in ${portage_pkdir};do
+		[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
+		[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+		portage_overlays+="${repo_dir} ${repo_name}"$'\n'
+	done
+	all_overlays+="${portage_overlays}"
+	all_overlays="$(sort -u <<< "${all_overlays}" | sed '/^$/d')"
+
+	######## parent_repo for installed packages
+	used_repos="$(cat ${PKGDB}/*/*/repository | sort -u | grep -v gentoo)"
+
+	for repo in ${used_repos};do
+		repo_path="$(grep " ${repo}$" <<< "${portage_overlays}" | awk '{print $1}')"
+		if [[ -d "${repo_path}" ]];then
+			######## checking symlinks in repo
+			for x in `find "${repo_path}" -type l`;do
+				target="$(readlink ${x})"
+				if [[ -e "${target}" ]];then
+					good_links+="${target}"$'\n'
+				else
+					bad_links+="${repo} ${x}"$'\n'
+				fi
+			done
+		else
+			TRASH_REPO+="repo '${green}${repo}${restore}' used, but not exist in \${PORTDIR_OVERLAY}"$'\n'
+			continue
+		fi
+	done
+
+	####### checking layman_overlays: used by links or not
+	while read path name;do
+		if grep -q "^${path}" <<< "${good_links%$'\n'}";then
+			link_used+="${path} ${name}"$'\n'
+		else
+			link_unused+="${path} ${name}"$'\n'
+		fi
+	done <<< "${layman_overlays%$'\n'}"
+
+	####### looking unused layman repo: by portage, by symlinks
+	while read path name;do
+		if ! grep -q " ${name}$" <<< "${link_used}" && ! grep -q "^${name}$" <<< "${used_repos}";then
+			grep -q " ${name}$" <<< "${layman_overlays}" && UNUSED+="${name}"$'\n'
+		fi
+	done <<< "${all_overlays%$'\n'}"
+	UNUSED="$(sort -u <<< "${UNUSED}")"
+
+	if [[ -n "${bad_links}" ]];then
+		echo "broken symlinks:"
+		echo "${bad_links}"
+		echo -ne "\n${contrast}Would you like remove?${restore} [${green}Yes${restore}/${red}No${restore}] "
+		while read z;do
+			case ${z} in
+				Yes | YES | yes | Y | y | "" )
+					for symlink in $(awk '{print $2}' <<< "${bad_links%$'\n'}");do
+						rm -v "${symlink}"
+						eend $? 2>/dev/null
+					done
+					break;;
+				No | NO | no | N | n )
+					break;;
+				* ) echo -ne "Sorry, response '${z}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+					continue;;
+			esac
+		done
+	fi
+
+	choose_target(){
+		PS3=`echo -e "${contrast}Choose repo which you want save:${restore} "`
+		select target in ${UNUSED};do
+			echo "${target}"
+			break
+		done
+	}
+	ask(){
+		[[ -n "${UNUSED}" ]] && echo -e "Unused repos:\n${UNUSED}"
+		if [[ -n "$(sed '/^$/d' <<< "${UNUSED}")" ]];then
+			echo -ne "\n${contrast}Would you like save some repo(s)?${restore} [${green}Yes${restore}/${red}No${restore}] "
+			while read x;do
+				[[ -z "$(sed '/^$/d' <<< "${UNUSED}")" ]] && break
+				case ${x} in
+					Yes | YES | yes | Y | y | "" )
+						UNUSED="$(grep -v "^$(choose_target)$" <<< "${UNUSED}")"
+						while [[ -z "${enough}" && "$(echo "${UNUSED// /$'\n'}" | sed '/^$/d' | wc -l)" != "0" ]];do
+							echo -ne "${contrast}More?${restore} [${green}Yes${restore}/${red}No${restore}] "
+							while read y;do
+								case ${y} in
+									Yes | YES | yes | Y | y | "" )
+										UNUSED="$(grep -v "^$(choose_target)$" <<< "${UNUSED}")"
+										break;;
+									No | NO | no | N | n )
+										enough="1"
+										break;;
+									* ) echo -ne "Sorry, response '${y}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+										continue;;
+								esac
+							done
+						done
+						break;;
+					No | NO | no | N | n )
+						break;;
+					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+						continue;;
+				esac
+			done
+		else
+			return 0
+		fi
+	}
+	fix_deps(){
+		DEP_PATH="/var/cache/edb/dep"
+		unset TRASH
+		for dep_path in `find ${DEP_PATH} -type d`;do
+			repo_path="$(sed "s|${DEP_PATH}||" <<< "${dep_path}")"
+			dep_file="${dep_path}.sqlite"
+			if [[ -n "${repo_path}" ]];then
+				if [[ ! -d "${repo_path}" ]];then
+					TRASH+="${dep_path} "
+					[[ -f "${dep_file}" ]] && TRASH+="${dep_file} "
+				elif [[ -d "${repo_path}" && ! "$(ls -A ${repo_path})" ]];then
+					TRASH+="${dep_path} "
+					[[ -f "${dep_file}" ]] && TRASH+="${dep_file} "
+				elif [[ -d "${repo_path}" && ! "$(ls -A ${dep_path})" && ! -f "${dep_file}" ]];then
+					TRASH+="${dep_path} "
+				elif [[ -d "${repo_path}" && "$(ls -A ${dep_path})" && -f "${dep_file}" ]];then
+					file_stamp="$(timestamp "${dep_file}")"
+					path_stamp="$(timestamp ${dep_path}/{*,*/*,*/*/*,*/*/*/*})"
+					if (( "${file_stamp}" > "${path_stamp}" ));then
+						TRASH+="${dep_path}/* "
+					elif (( "${file_stamp}" < "${path_stamp}" ));then
+						TRASH+="${dep_file} "
+					fi
+				fi
+			fi
+		done
+		if [[ -n "${TRASH}" ]];then
+			echo "${TRASH}"
+		else
+			stop="true"
+		fi
+	}
+	ask
+	for repo in ${UNUSED};do
+		layman -d "${repo}"
+	done
+	echo -e "\n${TRASH_REPO}"
+	echo "dep-cache:"
+	while [[ -z "${stop}" ]];do
+		trash="$(fix_deps)"
+		if [[ -n "${trash}" ]];then
+			echo -e "$(tr ' ' $'\n' <<< "${trash% }" | sed "s|^|removing:\\${green}|;s|$|\\${restore}|")"
+			rm -rf ${trash} 2>/dev/null || echo failed && exit 1
+		else
+			break
+			
+		fi
+	done
+	echo "done"
+	eend 0 2>/dev/null
+}
+############################################################################
 ################ help ######################################################
 help_pc(){
 echo -e \
@@ -1314,10 +1492,12 @@ ${contrast}Profile${restore}:
 	--all-profiles-use, -apu:    List \${USE} defined in profiles.
 	--profiles-use, -pu:         List \${USE} of profile.
 	--current-profile-use, -cpu: \${USE} of current profile.
-${contrast}world${restore}:
+${contrast}World${restore}:
 	--world-backup, -wb:         Create backup for current world file state.
 	--world-restore, -wr:        Rolling up world file to one of available states.
 	--world-regen, -wg:          Regen(cleanup) the world file.(backup: auto)
+${contrast}Overlays${restore}:
+	--fix-repos, -fr:            Remove unused overlays and dep-cache.
 OPTIONS must be separated by SPACE."
 }
 ############################################################################
@@ -1435,6 +1615,8 @@ for opt in ${opts};do
 	--world-regen | -wg )
 		world_backup;
 		regen_world;;
+	--fix-repos | -fr )
+		overlays;;
 	--help | -h | -? | h ) help_pc;;
 	esac
 done

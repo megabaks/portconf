@@ -11,8 +11,7 @@ timestamp(){
 }
 
 overlays(){
-	DEP_PATH="/var/cache/edb/dep"
-
+	########## repo over layman
 	layman_path="$(awk '/storage[[:space:]].*:/ {print $3}' /etc/layman/layman.cfg)"
 	source "${layman_path}/make.conf" 2>/dev/null
 	layman_pkgdir="$(tr '[[:space:]]' $'\n' <<< "${PORTDIR_OVERLAY}" | sed '/^$/d')"
@@ -24,6 +23,7 @@ overlays(){
 
 	all_overlays="${layman_overlays}"
 
+	######### repo over PORTDIR_OVERLAY ----> used by portage
 	export "$(emerge --info 2>/dev/null | grep "^PORTDIR_OVERLAY=" | tr -d '"')"
 	portage_pkdir="${PORTDIR_OVERLAY}"
 	unset PORTDIR_OVERLAY
@@ -35,11 +35,13 @@ overlays(){
 	all_overlays+="${portage_overlays}"
 	all_overlays="$(sort -u <<< "${all_overlays}" | sed '/^$/d')"
 
+	######## parent_repo for installed packages
 	used_repos="$(cat ${PKGDB}/*/*/repository | sort -u | grep -v gentoo)"
 
 	for repo in ${used_repos};do
 		repo_path="$(grep " ${repo}$" <<< "${portage_overlays}" | awk '{print $1}')"
 		if [[ -d "${repo_path}" ]];then
+			######## checking symlinks in repo
 			for x in `find "${repo_path}" -type l`;do
 				target="$(readlink ${x})"
 				if [[ -e "${target}" ]];then
@@ -54,6 +56,7 @@ overlays(){
 		fi
 	done
 
+	####### checking layman_overlays: used by links or not
 	while read path name;do
 		if grep -q "^${path}" <<< "${good_links%$'\n'}";then
 			link_used+="${path} ${name}"$'\n'
@@ -62,14 +65,33 @@ overlays(){
 		fi
 	done <<< "${layman_overlays%$'\n'}"
 
+	####### looking unused layman repo: by portage, by symlinks
 	while read path name;do
 		if ! grep -q " ${name}$" <<< "${link_used}" && ! grep -q "^${name}$" <<< "${used_repos}";then
 			grep -q " ${name}$" <<< "${layman_overlays}" && UNUSED+="${name}"$'\n'
 		fi
 	done <<< "${all_overlays%$'\n'}"
+	UNUSED="$(sort -u <<< "${UNUSED}")"
 
-	echo "broken symlinks:"
-	echo "${bad_links}"
+	if [[ -n "${bad_links}" ]];then
+		echo "broken symlinks:"
+		echo "${bad_links}"
+		echo -ne "\n${contrast}Would you like remove?${restore} [${green}Yes${restore}/${red}No${restore}] "
+		while read z;do
+			case ${z} in
+				Yes | YES | yes | Y | y | "" )
+					for symlink in $(awk '{print $2}' <<< "${bad_links%$'\n'}");do
+						rm -v "${symlink}"
+						eend $? 2>/dev/null
+					done
+					break;;
+				No | NO | no | N | n )
+					break;;
+				* ) echo -ne "Sorry, response '${z}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+					continue;;
+			esac
+		done
+	fi
 
 	choose_target(){
 		PS3=`echo -e "${contrast}Choose repo which you want save:${restore} "`
@@ -79,7 +101,7 @@ overlays(){
 		done
 	}
 	ask(){
-		[[ -n "${UNUSED}" ]] && echo -e "Unused repos:\n\n${UNUSED}"
+		[[ -n "${UNUSED}" ]] && echo -e "Unused repos:\n${UNUSED}"
 		if [[ -n "$(sed '/^$/d' <<< "${UNUSED}")" ]];then
 			echo -ne "\n${contrast}Would you like save some repo(s)?${restore} [${green}Yes${restore}/${red}No${restore}] "
 			while read x;do
@@ -114,6 +136,7 @@ overlays(){
 		fi
 	}
 	fix_deps(){
+		DEP_PATH="/var/cache/edb/dep"
 		unset TRASH
 		for dep_path in `find ${DEP_PATH} -type d`;do
 			repo_path="$(sed "s|${DEP_PATH}||" <<< "${dep_path}")"

@@ -1149,7 +1149,7 @@ mask_trash(){
 
 	files="$(awk '{print $1}' <<< "${TRASH}" | sort -u | sed '/^$/d')"
 	for target in ${files};do
-		if [[ -n "${target}" ]];then
+		if [[ -f "${target}" ]];then
 			tmp_file="$(mktemp)"
 			cp "${target}" "${tmp_file}"
 			incorrect="$(grep ${target} <<< "${TRASH}" | sed -e "s|${target} ||g")"

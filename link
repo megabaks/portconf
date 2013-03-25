@@ -39,7 +39,7 @@ for repo in ${used_repos};do
 			if [[ -e "${target}" ]];then
 				good_links+="${target}"$'\n'
 			else
-				bad_links+="${target}"$'\n'
+				bad_links+="${repo} ${x}"$'\n'
 			fi
 		done
 	else
@@ -64,3 +64,6 @@ while read path name;do
 done <<< "${all_overlays%$'\n'}"
 
 [[ -n "${UNUSED}" ]] && echo -e "layman unused:\n${UNUSED}"
+
+echo "broken symlinks:"
+echo "${bad_links}"

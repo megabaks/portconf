@@ -1,0 +1,123 @@
+#!/bin/bash
+
+PKGDB="/var/db/pkg"
+timestamp(){
+	ls -dgo --time-style=+%s --color=never ${*} 2>/dev/null | awk '{print $4}' | sort | tail -n1
+}
+[[ -f "/etc/init.d/functions.sh" ]] && . /etc/init.d/functions.sh
+green="\033[01;32m"
+red="\033[01;31m"
+restore="\033[00m"
+contrast="\033[1m"
+underline="\033[4m"
+#######################################################################
+DEP_PATH="/var/cache/edb/dep"
+
+overlays(){
+	OVERLAYS="$(layman -Nl | awk '/*/ {print $2}')"
+	used(){
+		for repo in ${OVERLAYS};do
+			grep "^${repo}$" ${PKGDB}/*/*/repository
+		done | uniq | cut -d\: -f2
+	}
+	unused(){
+		for unused_repo in $(grep -v "$(used)" <<< "${OVERLAYS}");do
+			echo "${unused_repo}"
+		done
+	}
+	choose_target(){
+		PS3=`echo -e "${contrast}Choose repo which you want save:${restore} "`
+		select target in ${pretend};do
+			echo "${target}"
+			break
+		done
+	}
+	ask(){
+		[[ -z "${pretend}" ]] && pretend="$(unused)"
+		[[ -n "${pretend}" ]] && echo -e "Unused repos:\n\n${pretend}"
+		if [[ -n "$(sed '/^$/d' <<< "${pretend}")" ]];then
+			echo -ne "\n${contrast}Would you like save some repo(s)?${restore} [${green}Yes${restore}/${red}No${restore}] "
+			while read x;do
+				[[ -z "$(sed '/^$/d' <<< "${pretend}")" ]] && break
+				case ${x} in
+					Yes | YES | yes | Y | y | "" )
+						pretend="$(grep -v "^$(choose_target)$" <<< "${pretend}")"
+						while [[ -z "${enough}" && "$(echo "${pretend// /$'\n'}" | sed '/^$/d' | wc -l)" != "0" ]];do
+							echo -ne "${contrast}More?${restore} [${green}Yes${restore}/${red}No${restore}] "
+							while read y;do
+								case ${y} in
+									Yes | YES | yes | Y | y | "" )
+										pretend="$(grep -v "^$(choose_target)$" <<< "${pretend}")"
+										break;;
+									No | NO | no | N | n )
+										enough="1"
+										break;;
+									* ) echo -ne "Sorry, response '${y}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+										continue;;
+								esac
+							done
+						done
+						break;;
+					No | NO | no | N | n )
+						break;;
+					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
+						continue;;
+				esac
+			done
+		else
+			return 0
+		fi
+	}
+	fix_deps(){
+		unset TRASH
+		for dep_path in `find ${DEP_PATH} -type d`;do
+			repo_path="$(sed "s|${DEP_PATH}||" <<< "${dep_path}")"
+			dep_file="${dep_path}.sqlite"
+			if [[ -n "${repo_path}" ]];then
+				if [[ ! -d "${repo_path}" ]];then
+					TRASH+="${dep_path} "
+					[[ -f "${dep_file}" ]] && TRASH+="${dep_file} "
+				elif [[ -d "${repo_path}" && ! "$(ls -A ${repo_path})" ]];then
+					TRASH+="${dep_path} "
+					[[ -f "${dep_file}" ]] && TRASH+="${dep_file} "
+				elif [[ -d "${repo_path}" && ! "$(ls -A ${dep_path})" && ! -f "${dep_file}" ]];then
+					TRASH+="${dep_path} "
+				elif [[ -d "${repo_path}" && "$(ls -A ${dep_path})" && -f "${dep_file}" ]];then
+					file_stamp="$(timestamp "${dep_file}")"
+					path_stamp="$(timestamp ${dep_path}/{*,*/*,*/*/*,*/*/*/*})"
+					if (( "${file_stamp}" > "${path_stamp}" ));then
+						TRASH+="${dep_path}/* "
+					elif (( "${file_stamp}" < "${path_stamp}" ));then
+						TRASH+="${dep_file} "
+					fi
+				fi
+			fi
+		done
+		if [[ -n "${TRASH}" ]];then
+			echo "${TRASH}"
+		else
+			stop="true"
+		fi
+	}
+
+	ask
+	for repo in ${pretend};do
+		layman -d "${repo}"
+	done
+	echo "dep-cache:"
+	while [[ -z "${stop}" ]];do
+		trash="$(fix_deps)"
+		if [[ -n "${trash}" ]];then
+			echo -e "$(tr ' ' $'\n' <<< "${trash% }" | sed "s|^|removing:\\${green}|;s|$|\\${restore}|")"
+			rm -rf ${trash} 2>/dev/null
+		else
+			break
+			
+		fi
+		unset TRASH
+	done
+	echo "done"
+	eend 0 2>/dev/null
+}
+
+overlays

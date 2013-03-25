@@ -34,7 +34,7 @@ overlays(){
 
 	used_repos="$(cat ${PKGDB}/*/*/repository | sort -u | grep -v gentoo)"
 
-	for repo in ${used_repos} xorik-link;do
+	for repo in ${used_repos};do
 		repo_path="$(grep " ${repo}$" <<< "${portage_overlays}" | awk '{print $1}')"
 		if [[ -d "${repo_path}" ]];then
 			for x in `find "${repo_path}" -type l`;do

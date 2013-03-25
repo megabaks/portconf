@@ -1148,8 +1148,8 @@ mask_trash(){
 	done <<< "${MASKED}"
 
 	files="$(awk '{print $1}' <<< "${TRASH}" | sort -u | sed '/^$/d')"
-	if [[ -n "${files}" ]];then
-		for target in ${files};do
+	for target in ${files};do
+		if [[ -n "${target}" ]];then
 			tmp_file="$(mktemp)"
 			cp "${target}" "${tmp_file}"
 			incorrect="$(grep ${target} <<< "${TRASH}" | sed -e "s|${target} ||g")"
@@ -1157,8 +1157,8 @@ mask_trash(){
 				sed -e "s|^${trash_atom}.*||" -e '/^$/d' -e 's/[ \t]*$//' -i "${tmp_file}"
 			done
 			diff_ask "${target}" "${tmp_file}"
-		done
-	fi
+		fi
+	done
 	unset TRASH OVERLAYS_LIST VERSIONONLY FORMAT MASKED UNMASKED versions oldest versions_diff versions_btwn
 }
 ############################################################################

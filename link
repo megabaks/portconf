@@ -1,0 +1,66 @@
+#!/bin/bash
+
+PKGDB="/var/db/pkg"
+green="\033[01;32m"
+red="\033[01;31m"
+restore="\033[00m"
+contrast="\033[1m"
+underline="\033[4m"
+
+layman_repos="$(layman -Nl | awk '/*/ {print $2}')"
+layman_path="$(awk '/storage[[:space:]].*:/ {print $3}' /etc/layman/layman.cfg)"
+source "${layman_path}/make.conf" 2>/dev/null
+layman_pkgdir="$(tr '[[:space:]]' $'\n' <<< "${PORTDIR_OVERLAY}" | sed '/^$/d')"
+for repo_dir in ${layman_pkgdir};do
+	[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
+	[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+	layman_overlays+="${repo_dir} ${repo_name}"$'\n'
+done
+
+all_overlays="${layman_overlays}"
+
+export "$(emerge --info 2>/dev/null | grep "^PORTDIR_OVERLAY=" | tr -d '"')"
+portage_pkdir="${PORTDIR_OVERLAY}"
+unset PORTDIR_OVERLAY
+for repo_dir in ${portage_pkdir};do
+	[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
+	[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+	portage_overlays+="${repo_dir} ${repo_name}"$'\n'
+done
+all_overlays+="${portage_overlays}"
+
+used_repos="$(cat ${PKGDB}/*/*/repository | sort -u | grep -v gentoo)"
+
+for repo in ${used_repos};do
+	repo_path="$(grep " ${repo}$" <<< "${portage_overlays}" | awk '{print $1}')"
+	if [[ -d "${repo_path}" ]];then
+		for x in `find "${repo_path}" -type l`;do
+			target="$(readlink ${x})"
+			if [[ -e "${target}" ]];then
+				good_links+="${target}"$'\n'
+			else
+				bad_links+="${target}"$'\n'
+			fi
+		done
+	else
+		echo -e "repo '${green}${repo}${restore}' used, but not exist in \${PORTDIR_OVERLAY}"
+		continue
+	fi
+done
+
+while read path name;do
+	if grep -q "^${path}" <<< "${good_links%$'\n'}";then
+		link_used+="${path} ${name}"$'\n'
+	else
+		link_unused+="${path} ${name}"$'\n'
+	fi
+done <<< "${layman_overlays%$'\n'}"
+
+while read path name;do
+	if ! grep -q " ${name}$" <<< "${link_used}" && ! grep -q "^${name}$" <<< "${used_repos}";then
+		echo -e "UNUSED: ${green}${name}${restore} ${path}"
+		grep -q " ${name}$" <<< "${layman_overlays}" && UNUSED+="${name}"$'\n'
+	fi
+done <<< "${all_overlays%$'\n'}"
+
+[[ -n "${UNUSED}" ]] && echo -e "layman unused:\n${UNUSED}"

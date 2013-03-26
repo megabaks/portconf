@@ -1487,7 +1487,7 @@ ${contrast}\${KEYWORDS}${restore}:
 	--keyword-uniq, -ku:         Like '-us', but for keywords.
 	--keyword-one, -ko:          Save only latest defined keyword.
 ${contrast}Trash${restore}:
-	--trash, -t:                 Delete not_founded/not_installed entries.
+	--trash, -t:                 Delete not_founded/not_installed entries, empty and backup files.
 	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 	--stupid-mask, -sm           Remove incorrect masked atoms.
 	--stupid-unmask, -sum        Remove incorrect unmasked atoms.
@@ -1554,7 +1554,7 @@ for opt in ${opts};do
 		backup;
 		invalid_uses;
 		invalid_uses_make;
-		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
+		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--use-make | -um )
 		backup;
 		use_makeconf;;
@@ -1564,7 +1564,7 @@ for opt in ${opts};do
 		invalid_uses;
 		invalid_uses_make;
 		use_makeconf;
-		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
+		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--keyword-one | -ko )
 		backup;
 		sort_keywords;;
@@ -1577,7 +1577,7 @@ for opt in ${opts};do
 		env_not_installed;
 		empty_files;
 		backup_files;
-		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
+		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--stupid-mask | -sm )
 		backup;
 		mask_trash;;
@@ -1591,7 +1591,7 @@ for opt in ${opts};do
 		force_not_installed;
 		empty_files;
 		backup_files;
-		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
+		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--rm-comments | -c )
 		backup;
 		rm_comments;;
@@ -1612,7 +1612,7 @@ for opt in ${opts};do
 		stupid_unmask;
 		empty_files;
 		backup_files;
-		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
+		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--files-2-dirs | -f2d )
 		backup;
 		f_to_d;;

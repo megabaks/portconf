@@ -968,6 +968,15 @@ empty_files(){
 	eend 0 2>/dev/null
 }
 ############################################################################
+################ backup files ##############################################
+backup_files(){
+	echo -e "${underline}Looking backup files${restore}"
+	for target in `find ${PORT_ETC} -type f \( -name "*~" -o  -name "*.bak" -o -name "*.old" \)`;do
+		remove_ask "${target}"
+	done
+	eend 0 2>/dev/null
+}
+############################################################################
 ################ package.* files 2 dirs ####################################
 f_to_d(){
 	while read package;do
@@ -1566,7 +1575,8 @@ for opt in ${opts};do
 		backup;
 		not_found;
 		env_not_installed;
-		empty_files
+		empty_files;
+		backup_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
 	--stupid-mask | -sm )
 		backup;
@@ -1579,7 +1589,8 @@ for opt in ${opts};do
 		not_found;
 		env_not_installed;
 		force_not_installed;
-		empty_files
+		empty_files;
+		backup_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
 	--rm-comments | -c )
 		backup;
@@ -1600,6 +1611,7 @@ for opt in ${opts};do
 		mask_trash;
 		stupid_unmask;
 		empty_files;
+		backup_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset EIX_CACHEFILE;;
 	--files-2-dirs | -f2d )
 		backup;

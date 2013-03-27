@@ -480,6 +480,35 @@ sort_uses(){
 	eend $? 2>/dev/null
 } 2>/dev/null
 ############################################################################
+################ sort_uses #################################################
+sort_keys(){
+	tmp_file="$(mktemp)"
+	striped="$(mktemp)"
+	PACKAGES="$(awk '{print $1}' ${file} | grep -v '^#.*' | uniq)"
+	for atom in ${PACKAGES};do
+		comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
+		for option in \
+		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
+			atom_opts+="${option}"
+		done
+		uses="$(sort_passed_uses "${atom_opts}")"
+		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
+		if [[ -n "${comment}" ]];then
+			echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
+		else
+			echo "${atom} ${uses}" >> "${tmp_file}"
+		fi
+		unset atom atom_opts option options uses comment
+	done
+	cp "${tmp_file}" "${striped}" 2>/dev/null
+
+	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
+	sort -u "${striped}" -o "${striped}" 2>/dev/null
+	rm "${tmp_file}" 2>/dev/null
+	diff_ask "${file}" "${striped}"
+	eend $? 2>/dev/null
+} 2>/dev/null
+############################################################################
 ################ package.use ###############################################
 sort_use_file(){
 	file_or_dir "package.use" "Sorting use flags in" "sort_uses" || return 1
@@ -509,7 +538,7 @@ sort_keywords(){
 ############################################################################
 ################ uniq_keyword ##############################################
 uniq_keywords(){
-	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_uses" "set +f" || return 1
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_keys" "set +f" || return 1
 }
 ############################################################################
 ################ not_installed #############################################

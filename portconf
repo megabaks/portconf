@@ -17,6 +17,7 @@ PKGDB="/var/db/pkg"
 BRDIR="/var/lib/portconf"
 PORT_ETC="/etc/portage"
 WORLD="/var/lib/portage/world"
+ARCH="$(eix --print DEFAULT_ARCH)"
 [[ -f "/etc/portconf.conf" ]] && . /etc/portconf.conf
 [[ -z "${COUNT}" ]] && COUNT="10"
 ############################################################################
@@ -480,6 +481,11 @@ sort_uses(){
 	eend $? 2>/dev/null
 } 2>/dev/null
 ############################################################################
+################ package.use ###############################################
+sort_use_file(){
+	file_or_dir "package.use" "Sorting use flags in" "sort_uses" || return 1
+}
+############################################################################
 ################ sort_keys #################################################
 sort_keys(){
 	tmp_file="$(mktemp)"
@@ -491,16 +497,21 @@ sort_keys(){
 		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
 			atom_opts+="${option}"
 		done
-		uses="$(sort_passed_uses "${atom_opts}")"
-		uses="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${uses})"
+		keys="$(sort_passed_uses "${atom_opts}")"
+		keys="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${keys})"
 		if [[ -n "${comment}" ]];then
-			echo "${atom} ${uses} #${comment}" >> "${tmp_file}"
+			echo "${atom} ${keys} #${comment}" >> "${tmp_file}"
 		else
-			echo "${atom} ${uses}" >> "${tmp_file}"
+			echo "${atom} ${keys}" >> "${tmp_file}"
 		fi
-		unset atom atom_opts option options uses comment
+		unset atom atom_opts option options keys comment
 	done
 	cp "${tmp_file}" "${striped}" 2>/dev/null
+
+	while read atom opt;do
+		[[ -z "${opt}" ]] && sed -e "s|^${atom} |${atom} ~${ARCH}|" -i "${striped}" 2>/dev/null
+		unset atom opt
+	done < "${tmp_file}"
 
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
 	sort -u "${striped}" -o "${striped}" 2>/dev/null
@@ -508,11 +519,6 @@ sort_keys(){
 	diff_ask "${file}" "${striped}"
 	eend $? 2>/dev/null
 } 2>/dev/null
-############################################################################
-################ package.use ###############################################
-sort_use_file(){
-	file_or_dir "package.use" "Sorting use flags in" "sort_uses" || return 1
-}
 ############################################################################
 ################ one_keyword ###############################################
 sort_keywords(){
@@ -523,6 +529,7 @@ sort_keywords(){
 			comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 			keyword="$(grep "${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" |\
 						tr "[:space:]" $'\n' | sed '/^$/d' | tail -n1)"
+			[[ -z "${keyword}" ]] && keyword="~${ARCH}"
 			if [[ -n "${comment}" ]];then
 				echo "${atom} ${keyword} #${comment}" >> "${tmp_file}"
 			else

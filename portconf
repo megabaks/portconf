@@ -95,8 +95,9 @@ current_profile(){
 }
 ############################################################################
 ################ make.conf #################################################
-[[ -f "/etc/make.conf" ]] && . /etc/make.conf 2>/dev/null
-[[ -f "${PORT_ETC}/make.conf" ]] && . ${PORT_ETC}/make.conf 2>/dev/null
+[[ -f "/etc/make.conf" ]] && makefile="/etc/make.conf"
+[[ -f "${PORT_ETC}/make.conf" ]] && makefile="${PORT_ETC}/make.conf"
+. "${makefile}" 2>/dev/null
 MAKE_USES="${USE}"
 unset USE
 [[ -z "${PORTDIR}" ]] && PORTDIR="/usr/portage"
@@ -873,8 +874,6 @@ hell_parser(){
 }
 
 invalid_uses_make(){
-	[[ -f "/etc/make.conf" ]] && makefile="/etc/make.conf"
-	[[ -f "${PORT_ETC}/make.conf" ]] && makefile="${PORT_ETC}/make.conf"
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile}${restore}"
 	tmp_file="$(mktemp)"
 	cp "${makefile}" "${tmp_file}"
@@ -972,8 +971,6 @@ not_found(){
 ############################################################################
 ################ profile's uses in make.conf ###############################
 use_makeconf(){
-	[[ -f "/etc/make.conf" ]] && makefile="/etc/make.conf"
-	[[ -f "${PORT_ETC}/make.conf" ]] && makefile="${PORT_ETC}/make.conf"
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile##/etc*/}${restore}"
 	USE="$(echo -e "${MAKE_USES}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
 

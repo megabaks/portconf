@@ -537,6 +537,7 @@ sort_keys(){
 		done
 		keys="$(sort_passed_uses "${atom_opts}")"
 		keys="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${keys})"
+		[[ -z "${keys}" ]] && keys="~${ARCH}"
 		if [[ -n "${comment}" ]];then
 			echo "${atom} ${keys} #${comment}" >> "${tmp_file}"
 		else

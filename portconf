@@ -487,6 +487,43 @@ sort_use_file(){
 	file_or_dir "package.use" "Sorting use flags in" "sort_uses" || return 1
 }
 ############################################################################
+################ stupid_keyword ############################################
+stupid_keywords(){
+	unset ACCEPT_KEYWORDS
+	local "$(emerge --info 2>/dev/null | grep "^ACCEPT_KEYWORDS=" | tr -d '"')"
+	for KEY in ${ACCEPT_KEYWORDS};do
+		while read satom lkeys;do
+			comment="$(cut -d\# -f2- <<< "${lkeys}")"
+			lkeys="${lkeys%%#*}"
+			lkeys="${lkeys%% }"
+			out_keys="$(tr ' ' $'\n' <<< "${lkeys}")"
+			for key in ${lkeys};do
+				if [[ "${key}" == "${KEY}" ]];then
+					echo -e "Twice defined keyword ${red}${key}${restore}:\t${green}${satom}${restore}"
+					out_keys="$(grep -v "`printf ${key}`"  <<< "${out_keys}")"
+				fi
+			done
+			out_keys="$(tr $'\n' ' ' <<< "${out_keys}")"
+			out_keys="${out_keys% }"
+			if [[ "${lkeys}" != "${out_keys}" ]];then
+				if [[ -n "${out_keys% }" ]];then
+					if [[ -n "${comment}" ]];then
+						string="$(grep "^${satom} ${lkeys} .*#${comment}$" "${1}")"
+						fixed_string="${satom} ${out_keys% } #${comment}"
+					else
+						string="$(grep "^${satom} ${lkeys}$" "${1}")"
+						fixed_string="${satom} ${out_keys}"
+					fi
+				else
+					string="$(grep "^${satom} ${lkeys}.*$" "${1}")"
+					fixed_string=""
+				fi
+				sed -e "s|^${string}$|${fixed_string}|"  -e '/^$/d' -i "${2}"
+			fi
+		done < "${1}"
+	done
+}
+############################################################################
 ################ sort_keys #################################################
 sort_keys(){
 	tmp_file="$(mktemp)"
@@ -516,15 +553,18 @@ sort_keys(){
 
 	sed -e 's/[ \t]*$//' -e '/^$/d' -e 's|  | |g' -e "s| - | |g" -i "${striped}" 2>/dev/null
 	sort -u "${striped}" -o "${striped}" 2>/dev/null
+	cp "${striped}" "${tmp_file}"
+	stupid_keywords "${tmp_file}" "${striped}"
 	rm "${tmp_file}" 2>/dev/null
 	diff_ask "${file}" "${striped}"
 	eend $? 2>/dev/null
-} 2>/dev/null
+} #2>/dev/null
 ############################################################################
 ################ one_keyword ###############################################
 sort_keywords(){
 	keys(){
 		tmp_file="$(mktemp)"
+		striped="$(mktemp)"
 		atoms="$(awk '{print $1}' "${file}" | sort -u)"
 		while read atom;do
 			comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
@@ -538,6 +578,9 @@ sort_keywords(){
 			fi
 		done <<< "${atoms}"
 		sort -u "${tmp_file}" -o "${tmp_file}" 2>/dev/null
+		cp "${tmp_file}" "${striped}"
+		stupid_keywords "${striped}" "${tmp_file}"
+		rm "${striped}"
 		diff_ask "${file}" "${tmp_file}"
 		eend $? 2>/dev/null
 	}
@@ -758,38 +801,33 @@ invalid_uses(){
 				fi
 			done
 
+			prepare(){
+				while read string;do
+					struse="${string#${category}/${pn}}"
+					struse="$(tr "[:space:]" $'\n' <<< ${struse})"
+					usefxd="$(sed -e "s|^${trash#-}$||" -e "s|^\-${trash#-}$||" -e '/^$/d' <<< "${struse}")"
+					usefxd="$(tr $'\n' " " <<< "${usefxd}")"
+					usefxd="$(sed -e 's| - | |g' -e 's/[ -]*$//' <<< ${usefxd})"
+					strfxd="${category}/${pn} ${usefxd}"
+					sed -e "s|^${category}/${pn}[[:space:]].*${trash#-}.*|$strfxd|" -i ${tmp_file} 2>/dev/null
+					eend $? 2>/dev/null
+				done <<< "${strings}"
+			}
+
 			incorrect_use="$(echo ${incorrect_use} | tr "[:space:]" $'\n' | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
 			global_use="$(echo ${global_use} | tr "[:space:]" $'\n' | sed -e 's|  | |g' -e '/^ $/d' -e '/^$/d' | sort -u)"
 			if [[ -n "${incorrect_use}" ]];then
 				while read trash;do
 					echo -e "Invalid use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"
 					strings="$(grep "^${category}/${pn}[[:space:]].*\<${trash}\>" ${tmp_file})"
-					while read string;do
-						struse="${string#${category}/${pn}}"
-						struse="$(tr "[:space:]" $'\n' <<< ${struse})"
-						usefxd="$(sed -e "s|^${trash#-}$||" -e "s|^\-${trash#-}$||" -e '/^$/d' <<< "${struse}")"
-						usefxd="$(tr $'\n' " " <<< "${usefxd}")"
-						usefxd="$(sed -e 's| - | |g' -e 's/[ -]*$//' <<< ${usefxd})"
-						strfxd="${category}/${pn} ${usefxd}"
-						sed -e "s|^${category}/${pn}[[:space:]].*${trash#-}.*|$strfxd|" -i ${tmp_file} 2>/dev/null
-						eend $? 2>/dev/null
-					done <<< "${strings}"
+					prepare;
 				done <<< "${incorrect_use}"
 			fi
 			if [[ -n "${global_use}" ]];then
 				while read trash;do
 					echo -e "Global  use: ${green}${category}/${pn}${restore}: ${red}${trash}${restore}"
 					strings="$(grep "^${category}/${pn}[[:space:]].*\<${trash#-}\>" ${tmp_file})"
-					while read string;do
-						struse="${string#${category}/${pn}}"
-						struse="$(tr "[:space:]" $'\n' <<< ${struse})"
-						usefxd="$(sed -e "s|^${trash#-}$||" -e "s|^\-${trash#-}$||" -e '/^$/d' <<< "${struse}")"
-						usefxd="$(tr $'\n' " " <<< "${usefxd}")"
-						usefxd="$(sed -e 's| - | |g' -e 's/[ -]*$//' <<< ${usefxd})"
-						strfxd="${category}/${pn} ${usefxd}"
-						sed -e "s|^${category}/${pn}[[:space:]].*${trash#-}.*|$strfxd|" -i ${tmp_file} 2>/dev/null
-						eend $? 2>/dev/null
-					done <<< "${strings}"
+					prepare;
 				done <<< "${global_use}"
 			fi
 			unset ALL_USE LOCAL USES incorrect_use global_use use

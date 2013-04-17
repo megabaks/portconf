@@ -1290,7 +1290,7 @@ regen_world(){
 	pretend+="$(qlist -CI `emerge -epO system | awk '/\[/ {print $4}'`)"$'\n'
 
 	for atom in ${installed};do
-		if ! grep -q "^${atom}$" <<< "${pretend}" && ! grep -q ".*-libs/" <<< "${atom}" && && ! grep -q "virtual/" <<< "${atom}";then
+		if ! grep -q "^${atom}$" <<< "${pretend}" && ! grep -q ".*-libs/" <<< "${atom}" && ! grep -q "virtual/" <<< "${atom}";then
 				echo "${atom}" >> "${tmp_world}"
 				echo -e "world++: ${green}${atom}${restore}"
 		fi

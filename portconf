@@ -155,9 +155,9 @@ eix_check(){
 ################ eix check method ##########################################
 eix_method(){
 	if [[ -n "$(eix --version 2>/dev/null)" ]];then
-		if [[ -z "$(eix --dump | grep '^OVERLAY_CACHE_METHOD="parse|ebuild\*"')" ]];then
+		if [[ "$(eix --print OVERLAY_CACHE_METHOD)" != "parse|ebuild*" ]];then
 			[[ -n "${yes}" ]] && eix_check
-			echo -ne "\n${red}!default 'OVERLAY_CACHE_METHOD'${restore}${contrast} \
+			echo -ne "\n${red}!default 'OVERLAY_CACHE_METHOD'${restore}${contrast}
 Create temporary cache?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 			while read x;do
 				case ${x} in
@@ -783,8 +783,8 @@ invalid_uses(){
 			echo -ne "["; printf "% ${chars}d" $((count--));echo -ne " ]" "atoms left" 2>/dev/null
 			tput rc
 
-			ALL_USE=" $(eix --end "${category}/${pn}")" || continue
-			ALL_USE="$(echo -e "${ALL_USE}" | sed -e 's| +| |g;s| -| |g;s|(+)||g' | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
+			ALL_USE=" $(eix -e "${category}/${pn}")" || continue
+			ALL_USE="$(sed -e 's| +| |g;s| -| |g;s|(+)||g' <<< "${ALL_USE}" | tr "[:space:]" $'\n' | sort -u | sed -e '/^$/d')"
 			LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" $'\n' | sort -u)"
 			USES="$(sed -e 's|^-||g' <<< "${LOCAL}")"
 			for use in ${USES};do

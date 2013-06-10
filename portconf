@@ -1060,13 +1060,16 @@ f_to_d(){
 			dir="${PORT_ETC}/${package##*/}"
 			mkdir "${dir}"
 			while read line;do
+			set -f
 				atom="$(awk '{print $1}' <<< "${line}")"
 				category="$(awk '{print $1}' <<< `qatom ${atom}`)"
 				if [[ "${category}" != "(null)" ]];then
 					category="$(tr -d "<>=~" <<< "${category}" )"
+					[[ "${category}" == "*" ]] && category="all_categories"
 					echo "${line}" >> "${dir}/${category}"
 				fi
 			done < "${tmp_file}"
+			set +f
 			eend $? 2>/dev/null
 			rm "${tmp_file}" 2>/dev/null
 		elif [[ -d "${package}" ]];then

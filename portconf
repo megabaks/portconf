@@ -1398,7 +1398,7 @@ overlays(){
 			######## checking symlinks in repo
 			for x in `find "${repo_path}" -type l`;do
 				target="$(readlink ${x})"
-				if [[ -e "${target}" ]];then
+				if [[ -e "${target}" || -e "${x%/*}/${target}" ]];then
 					good_links+="${target}"$'\n'
 				else
 					bad_links+="${repo} ${x}"$'\n'

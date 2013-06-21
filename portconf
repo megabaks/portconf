@@ -490,7 +490,7 @@ sort_use_file(){
 ################ stupid_keyword ############################################
 stupid_keywords(){
 	unset ACCEPT_KEYWORDS
-	local "$(emerge --info 2>/dev/null | grep "^ACCEPT_KEYWORDS=" | tr -d '"')"
+	local ACCEPT_KEYWORDS="$(eix --print ACCEPT_KEYWORDS)"
 	for KEY in ${ACCEPT_KEYWORDS};do
 		while read satom lkeys;do
 			comment="$(cut -d\# -f2- <<< "${lkeys}")"
@@ -595,16 +595,17 @@ uniq_keywords(){
 ############################################################################
 ################ not_installed #############################################
 installed(){
-	installed="$(LANG=en eix --xml --end --installed "${category}/${pn}" 2>/dev/null | grep "version id=")"
+	installed="$(qlist -ICSec "${category}/${pn}" | awk '{print $2}')"
 	if [[ -n "${installed}" ]];then
-		installed_vers="$(awk -F \" '{print $2}' <<< "${installed}")"
+		installed_vers="$(awk -F \: '{print $1}' <<< "${installed}")"
 		installed_min_ver="$(head -n1 <<< "${installed_vers}")"
-		installed_max_ver="$(tail -n1 <<< "`grep -v 9999 <<< ${installed_vers}`")"
-		installed_live_ver="$(tail -n1 <<< "`grep 9999 <<< ${installed_vers}`")"
-		grep -q "slot=" <<< "${installed}" && installed_slots="$(awk -F \" '{print $4}' <<< "${installed}")"
+		installed_max_ver="$(tail -n1 <<< "`grep -v 9999 <<< "${installed_vers}"`")"
+		installed_live_ver="$(tail -n1 <<< "`grep 9999 <<< "${installed_vers}"`")"
+		installed_slots="$(awk -F \: '{print $2}' <<< "${installed}")"
+		[[ "${installed_slots}" == "0" ]] && unset installed_slots
 	fi
 }
-##########################################
+
 not_if(){
 	atoms="$(awk '{print $1}' <<< "`grep -v "^#" < ${package}`")"
 	[[ -n "${IGNORE}" ]] && atoms="$(grep -v "${IGNORE}" <<< "${atoms}")"
@@ -639,7 +640,7 @@ not_if(){
 		done <<< "${atoms}"
 	fi
 }
-##########################################
+
 force_not_installed(){
 	for package in `find ${PORT_ETC}/package* -type f \! -name '*~' \! -name '*.bak'`;do
 		if [[ -s "${package}" && -n "$(grep -v "^#" < "${package}")" ]];then
@@ -1378,7 +1379,7 @@ overlays(){
 	all_overlays="${layman_overlays}"
 
 	######### repo over PORTDIR_OVERLAY ----> used by portage
-	export "$(emerge --info 2>/dev/null | grep "^PORTDIR_OVERLAY=" | tr -d '"')"
+	local PORTDIR_OVERLAY="$(eix --print PORTDIR_OVERLAY)"
 	portage_pkdir="${PORTDIR_OVERLAY}"
 	unset PORTDIR_OVERLAY
 	for repo_dir in ${portage_pkdir};do

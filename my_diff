@@ -1,0 +1,39 @@
+#!/bin/bash
+
+############################################################################
+################ colors ####################################################
+green="\033[01;32m"
+red="\033[01;31m"
+restore="\033[00m"
+contrast="\033[1m"
+underline="\033[4m"
+
+my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null | sed -e 's|^--- .*$||g;s|^+++ .*$||g;s|^@@.*@@$||g' -e '/^$/d')"
+
+while read line;do
+	if grep -q "^-" <<< "${line}";then
+		if [[ -z "${line#-}" ]];then
+			minus="--"
+			minus_line="${restore}"
+		else
+			minus="$(grep -n "${line#-}" "${1}" | awk -F \: '{print $1}')"
+			[[ -n "${minus}" ]] && minus_line="${red}$(sed -n "${minus}p" "${1}")${restore}"
+		fi
+		full_diff+="${minus}^:${red}-${minus_line}:"$'\n'
+	elif grep -q "^+" <<< "${line}";then
+		if [[ -z "${line#+}" ]];then
+			plus="--"
+			plus_line="${restore}"
+		else
+			plus="$(grep -n "${line#+}" "${2}" | awk -F \: '{print $1}')"
+			[[ -n "${plus}" ]] && plus_line="${green}$(sed -n "${plus}p" "${2}")${restore}"
+		fi
+		full_diff+="${plus}^:${green}+${plus_line}:"$'\n'
+	else
+		continue
+	fi
+done <<< "${my_diff}"
+echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
+echo "###############################################"
+echo -e "${full_diff%\\n}" | column -s \^ -t
+echo "###############################################"

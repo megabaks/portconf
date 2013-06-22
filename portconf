@@ -269,41 +269,34 @@ world_restore(){
 ############################################################################
 ################ diff_ask ##################################################
 diff_ask(){
-	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null)"
+	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null | sed -e 's|^--- .*$||g;s|^+++ .*$||g;s|^@@.*@@$||g' -e '/^$/d')"
 	if [[ -n "${my_diff}" ]];then
 		while read line;do
-			if ! grep -q '\-\-\-' <<< "${line}" && ! grep -q '+++' <<< "${line}" && ! grep -q '@@' <<< "${line}";then
-				string="$(sed -e 's|/|\\/|g' -e 's|^+||;s|^-||' -e 's|\*|\\*|g' <<< "${line}")"
-				[[ -n "${string}" ]] && plus="$(cat "${2}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || plus="X"
-				[[ -n "${string}" ]] && minus="$(cat "${1}" | grep -n "${string}" | cut -d\: -f1 | tr $'\n' " ")" || minus="X"
-				[[ "${minus}" != "X" ]] && for x in ${minus};do
-					[[ "$(sed -n "${x}p" ${1} 2>/dev/null)" == "$(sed -n "${x}p" ${2} 2>/dev/null)" ]] &&\
-					minus="${minus//${x}/}" && minus_exist=" == line ${contrast}${x}${restore}"
-				done
-				minus="${minus# }"
-				minus="${minus% }"
-				[[ "${plus}" != "X" ]] && for z in ${plus};do
-					[[ "$(sed -n "${z}p" ${1} 2>/dev/null)" == "$(sed -n "${z}p" ${2} 2>/dev/null)" ]] &&\
-					plus="${plus//${z}/}"  && plus_exist=" == line ${contrast}${x}${restore}"
-				done
-				plus="${plus# }"
-				plus="${plus% }"
-				if grep -q "^-" <<< "${line}";then
-					for i in ${minus};do
-						! grep -q "${i}.*:.*${red//\[/\\[}.*:" <<< "${full_diff}" && full_diff+="${i}\t:${red}${line}${restore}: ${minus_exist}\n"
-					done
+			if grep -q "^-" <<< "${line}";then
+				if [[ -z "${line#-}" ]];then
+					minus="--"
+					minus_line="${restore}"
+				else
+					minus="$(grep -n "${line#-}" "${1}" | awk -F \: '{print $1}')"
+					[[ -n "${minus}" ]] && minus_line="${red}$(sed -n "${minus}p" "${1}")${restore}"
 				fi
-				if grep -q "^+" <<< "${line}";then
-					for i in ${plus};do
-						! grep -q "${i}.*:.*${green//\[/\\[}.*:" <<< "${full_diff}" && full_diff+="${i}\t:${green}${line}${restore}: ${plus_exist}\n"
-					done
+				full_diff+="${minus}^:${red}-${minus_line}:"$'\n'
+			elif grep -q "^+" <<< "${line}";then
+				if [[ -z "${line#+}" ]];then
+					plus="--"
+					plus_line="${restore}"
+				else
+					plus="$(grep -n "${line#+}" "${2}" | awk -F \: '{print $1}')"
+					[[ -n "${plus}" ]] && plus_line="${green}$(sed -n "${plus}p" "${2}")${restore}"
 				fi
+				full_diff+="${plus}^:${green}+${plus_line}:"$'\n'
+			else
+				continue
 			fi
-			unset plus minus minus_exist plus_exist
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"
-		echo -e "${full_diff%\\n}" | grep \:
+		echo -e "${full_diff%\\n}" | column -s \^ -t
 		echo "###############################################"
 		if [[ -z "${yes}" && -z "${PRETEND}" ]];then
 			echo -ne "${contrast}Apply changes?${restore} [${green}Yes${restore}/${red}No${restore}] ";

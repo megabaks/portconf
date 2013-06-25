@@ -277,7 +277,7 @@ diff_ask(){
 					minus="--"
 					minus_line="${restore}"
 				else
-					minus="$(grep -n "${line#-}" "${1}" | awk -F \: '{print $1}')"
+					minus="$(grep -n "${line#--}" "${1}" | awk -F \: '{print $1}')"
 					[[ -n "${minus}" ]] && minus_line="${red}$(sed -n "${minus}p" "${1}")${restore}"
 				fi
 				full_diff+="${minus}^:-:${red}${minus_line}:"$'\n'

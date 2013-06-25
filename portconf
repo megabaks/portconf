@@ -269,30 +269,17 @@ world_restore(){
 ############################################################################
 ################ diff_ask ##################################################
 diff_ask(){
-	my_diff="$(diff -Nau0 "${1}" "${2}" | tr -d '\' 2>/dev/null | sed -e 's|^--- .*$||g;s|^+++ .*$||g;s|^@@.*@@$||g' -e '/^$/d')"
+	my_diff="$(diff ${1} ${2} | grep --color=never "[[:digit:]][a-z][[:digit:]]")"
 	if [[ -n "${my_diff}" ]];then
-		while read line;do
-			if grep -q "^-" <<< "${line}";then
-				if [[ -z "${line#-}" ]];then
-					minus="--"
-					minus_line="${restore}"
-				else
-					minus="$(grep -n "^${line#-}" "${1}" | awk -F \: '{print $1}')"
-					[[ -n "${minus}" ]] && minus_line="${red}$(sed -n "${minus}p" "${1}")${restore}"
-				fi
-				full_diff+="${minus}^:-:${red}${minus_line}:"$'\n'
-			elif grep -q "^+" <<< "${line}";then
-				if [[ -z "${line#+}" ]];then
-					plus="--"
-					plus_line="${restore}"
-				else
-					plus="$(grep -n "^${line#+}" "${2}" | awk -F \: '{print $1}')"
-					[[ -n "${plus}" ]] && plus_line="${green}$(sed -n "${plus}p" "${2}")${restore}"
-				fi
-				full_diff+="${plus}^:+:${green}${plus_line}:"$'\n'
-			else
-				continue
-			fi
+		while read subj;do
+			old_num="$(tr ',' ' ' <<< "${subj%[a-z]*}")"
+			new_num="$(tr ',' ' ' <<< "${subj#*[a-z]}")"
+			for num in ${old_num};do
+				full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
+			done
+			for num in ${new_num};do
+				full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
+			done
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"

@@ -32,8 +32,8 @@ IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ################ sort_passed_uses ##########################################
 sort_passed_uses(){
 	for opt in ${1};do
-		uses="$(echo -e ${uses} | tr "[:space:]" $'\n' | grep -v "^${opt#-}$" | grep -v "^\-${opt#-}$" | tr $'\n' " ")"
-		uses+=" $(echo ${1} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
+		uses="$(tr "[:space:]" $'\n' <<< ${uses} | grep -v -e "^${opt#-}$" -e "^\-${opt#-}$" | tr $'\n' " ")"
+		uses+=" $(tr "[:space:]" $'\n' <<< ${1} | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 		unset opt
 	done
 	echo ${uses}
@@ -42,8 +42,8 @@ sort_passed_uses(){
 ############################################################################
 ################ profile ###################################################
 profile() {
-	local use;
-	local path;
+	local use
+	local path
 	[[ -f "${1}/make.defaults" ]] && . "${1}/make.defaults"
 	use="$USE"
 	if [[ -f "${1}/parent" ]]; then
@@ -54,8 +54,8 @@ profile() {
 	echo $use
 }
 
-[[ -h "/etc/make.profile" ]] && pre_profile="$(profile `readlink /etc/make.profile | sed -e 's|\.\.||'`)"
-[[ -h "/etc/portage/make.profile" ]] && pre_profile="$(profile `readlink /etc/portage/make.profile | sed -e 's|\.\.||'`)"
+[[ -h "/etc/make.profile" ]] && pre_profile="$(profile `readlink -f /etc/make.profile`)"
+[[ -h "/etc/portage/make.profile" ]] && pre_profile="$(profile `readlink -f /etc/portage/make.profile`)"
 profile_uses="$(sort_passed_uses "${pre_profile}")"
 PROFILE="$(tr "[:space:]" $'\n' <<< ${profile_uses})"
 ############################################################################
@@ -280,7 +280,7 @@ diff_ask(){
 					minus="$(grep -n "${line#-}" "${1}" | awk -F \: '{print $1}')"
 					[[ -n "${minus}" ]] && minus_line="${red}$(sed -n "${minus}p" "${1}")${restore}"
 				fi
-				full_diff+="${minus}^:${red}-${minus_line}:"$'\n'
+				full_diff+="${minus}^:-:${red}${minus_line}:"$'\n'
 			elif grep -q "^+" <<< "${line}";then
 				if [[ -z "${line#+}" ]];then
 					plus="--"
@@ -289,7 +289,7 @@ diff_ask(){
 					plus="$(grep -n "${line#+}" "${2}" | awk -F \: '{print $1}')"
 					[[ -n "${plus}" ]] && plus_line="${green}$(sed -n "${plus}p" "${2}")${restore}"
 				fi
-				full_diff+="${plus}^:${green}+${plus_line}:"$'\n'
+				full_diff+="${plus}^:+:${green}${plus_line}:"$'\n'
 			else
 				continue
 			fi

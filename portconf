@@ -275,10 +275,10 @@ diff_ask(){
 			old_num="$(tr ',' ' ' <<< "${subj%[a-z]*}")"
 			new_num="$(tr ',' ' ' <<< "${subj#*[a-z]}")"
 			for num in ${old_num};do
-				full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
+				[[ "${num}" != "0" ]] && full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
 			done
 			for num in ${new_num};do
-				full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
+				[[ "${num}" != "0" ]] && full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
 			done
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
@@ -1261,6 +1261,80 @@ stupid_unmask(){
 	unset REDUNDANT_IF_IN_UNMASK REDUNDANT_IF_IN_MASK TEST_FOR_NONEXISTENT REDUNDANT_IF_UNMASK_NO_CHANGE
 }
 ############################################################################
+################ stupid mask/unmask uses ###################################
+sort_uniq_mask_use(){
+	for package in `find ${PORT_ETC}/profile -type f \! -name '*~' \! -name '*.bak' -name "use.stable.mask" -or -name "use.mask"`;do
+		tmp_sort="$(mktemp)"
+		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
+
+		masked_uses="$(grep -v "^#" "${package}")"
+
+		sort_passed_uses "${masked_uses}" | tr "[:space:]" $'\n' > ${tmp_sort}
+
+		diff_ask "${package}" "${tmp_sort}"
+		eend $? 2>/dev/null
+	done
+}
+
+profile_masked_uses() {
+	file="${1}/${2}"
+	if [[ -f "${file}" ]];then
+		all_uses+="$(grep "^[^#].*$" "${file}")"$'\n'
+	fi
+	if [[ -f "${1}/parent" ]]; then
+		for path in $(cat ${1}/parent);do
+			profile_masked_uses "${1}/${path}" "${2}"
+		done
+	fi
+}
+
+mask_files() {
+	if grep -q "~" <<< "$(eix --print ACCEPT_KEYWORDS)";then
+		echo "use.mask"
+	else
+		echo "use.mask use.stable.mask"
+	fi
+}
+
+use_mask() {
+	[[ -h "/etc/make.profile" ]] && makeprof="/etc/make.profile"
+	[[ -h "/etc/portage/make.profile" ]] && makeprof="/etc/portage/make.profile"
+	for target in $(mask_files);do
+		profile_masked_uses "$(readlink -f ${makeprof})" "${target}"
+	done
+
+	sort_passed_uses "${all_uses} " | tr "[:space:]" $'\n'
+}
+
+etc_profile_use_mask() {
+	orig_file="${PORT_ETC}/profile/use.mask"
+	tmp_file="$(mktemp)"
+	cp "${orig_file}" "${tmp_file}"
+	while read use;do
+		if grep -q "^${use/-/\-}$" <<< "$(use_mask)";then
+			if grep -q "^-" <<< "${use}";then
+				echo -e "Twice unmasked: ${red}${use}${restore}"
+				sed -e "s|^${use}.*||" -e '/^$/d' -e 's/[ \t]*$//' -i "${tmp_file}"
+			else
+				echo -e "Twice masked: ${red}${use}${restore}"
+				sed -e "s|^${use}.*||" -e '/^$/d' -e 's/[ \t]*$//' -i "${tmp_file}"
+			fi
+		else
+			if grep -q "^-" <<< "${use}";then
+				echo -e "Stupid unmask: ${red}${use}${restore}"
+				sed -e "s|^${use}.*||" -e '/^$/d' -e 's/[ \t]*$//' -i "${tmp_file}"
+			fi
+		fi
+	done < "${orig_file}"
+	diff_ask "${orig_file}" "${tmp_file}"
+}
+
+check_use_masked() {
+	for target in $(mask_files);do
+		file_or_dir "profile/${target}" "Checking masked uses:" "etc_profile_use_mask" || return 1
+	done
+}
+############################################################################
 ################ regen_world ###############################################
 regen_world(){
 	tmp_world="$(mktemp)"
@@ -1539,7 +1613,8 @@ ${contrast}\${USE}${restore}:
 	--use-sort, -us:             Sort useflags. Remove doubles and preserve only last defined state (on/off).
 	--use-invalid, -ui:          Delete invalid or twice global-defined useflags.
 	--use-make, -um:             Delete profile defined useflags from make.conf.
-	--use-full, -uf:             An analog '-us -ui -um'.
+	--stupid-use-profile, -sup   Delete incorrect or twice masked/unmasked useflags.
+	--use-full, -uf:             An analog '-us -ui -um -sup'.
 ${contrast}\${KEYWORDS}${restore}:
 	--keyword-uniq, -ku:         Like '-us', but for keywords.
 	--keyword-one, -ko:          Save only latest defined keyword.
@@ -1603,7 +1678,8 @@ for opt in ${opts};do
 		backup;
 		sort_use_file;
 		uniq_keywords;
-		sort_uniq_files;;
+		sort_uniq_files;
+		sort_uniq_mask_use;;
 	--use-sort | -us )
 		backup;
 		sort_use_file;;
@@ -1615,12 +1691,18 @@ for opt in ${opts};do
 	--use-make | -um )
 		backup;
 		use_makeconf;;
+	--stupid-use-profile | -sup )
+		backup;
+		sort_uniq_mask_use;
+		check_use_masked;;
 	--use-full | -uf )
 		backup;
 		sort_use_file;
+		sort_uniq_mask_use;
 		invalid_uses;
 		invalid_uses_make;
 		use_makeconf;
+		check_use_masked;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
 	--keyword-one | -ko )
 		backup;
@@ -1661,9 +1743,11 @@ for opt in ${opts};do
 		not_found;
 		env_not_installed;
 		sort_use_file;
+		sort_uniq_mask_use;
 		invalid_uses;
 		invalid_uses_make;
 		use_makeconf;
+		check_use_masked;
 		uniq_keywords;
 		mask_trash;
 		stupid_unmask;

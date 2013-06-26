@@ -1,7 +1,7 @@
 portconf
 ========
 
-/etc/portage manager
+/etc/portage cleaner
 
 USE:
 	<ul>

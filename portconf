@@ -1263,17 +1263,19 @@ stupid_unmask(){
 ############################################################################
 ################ stupid mask/unmask uses ###################################
 sort_uniq_mask_use(){
-	for package in `find ${PORT_ETC}/profile -type f \! -name '*~' \! -name '*.bak' -name "use.stable.mask" -or -name "use.mask"`;do
-		tmp_sort="$(mktemp)"
-		echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
+	if [[ -d "${PORT_ETC}/profile" || -h "${PORT_ETC}/profile" ]];then
+		for package in `find ${PORT_ETC}/profile -type f \! -name '*~' \! -name '*.bak' -name "use.stable.mask" -or -name "use.mask"`;do
+			tmp_sort="$(mktemp)"
+			echo -e "${underline}Sorting${restore} ${contrast}${package#${PORT_ETC}/}${restore}"
 
-		masked_uses="$(grep -v "^#" "${package}")"
+			masked_uses="$(grep -v "^#" "${package}")"
 
-		sort_passed_uses "${masked_uses}" | tr "[:space:]" $'\n' > ${tmp_sort}
+			sort_passed_uses "${masked_uses}" | tr "[:space:]" $'\n' > ${tmp_sort}
 
-		diff_ask "${package}" "${tmp_sort}"
-		eend $? 2>/dev/null
-	done
+			diff_ask "${package}" "${tmp_sort}"
+			eend $? 2>/dev/null
+		done
+	fi
 }
 
 profile_masked_uses() {

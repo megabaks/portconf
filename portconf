@@ -373,7 +373,7 @@ sort_uniq_files(){
 file_or_dir(){
 	founded="$(ls -d1 ${PORT_ETC}/${1} 2>/dev/null)"
 	if [[ -z "${founded}" ]];then
-		echo -e "${underline}${2}${restore}${contrast}${PORT_ETC}/${1}${restore}: No such file o directory${restore}"
+		echo -e "${underline}${2}${restore}${contrast}${PORT_ETC}/${1}${restore}: No such file or directory${restore}"
 		eend 1 2>/dev/null
 		return 1
 	fi

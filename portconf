@@ -528,7 +528,7 @@ sort_keys(){
 	cp "${tmp_file}" "${striped}" 2>/dev/null
 
 	while read atom opt;do
-		[[ -z "${opt}" ]] && sed -e "s|^${atom} |${atom} ~${ARCH}|" -i "${striped}" 2>/dev/null
+		[[ -z "${opt}" ]] && sed -e "s|^${atom}[ \t]$|${atom} ~${ARCH}|;s|^${atom}$|${atom} ~${ARCH}|" -i "${striped}" 2>/dev/null
 		unset atom opt
 	done < "${tmp_file}"
 

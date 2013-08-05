@@ -274,12 +274,23 @@ diff_ask(){
 		while read subj;do
 			old_num="$(tr ',' ' ' <<< "${subj%[a-z]*}")"
 			new_num="$(tr ',' ' ' <<< "${subj#*[a-z]}")"
-			for num in ${old_num};do
-				[[ "${num}" != "0" ]] && full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
-			done
-			for num in ${new_num};do
-				[[ "${num}" != "0" ]] && full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
-			done
+			action="$(grep -o "[a-z]" <<< "${subj}")"
+ 			if [[ "${action}" == "a" ]];then
+				for num in ${new_num};do
+					[[ "${num}" != "0" ]] && full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
+				done
+			elif [[ "${action}" == "d" ]];then
+				for num in ${old_num};do
+					[[ "${num}" != "0" ]] && full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
+				done
+			elif [[ "${action}" == "c" ]];then
+				for num in ${old_num};do
+					[[ "${num}" != "0" ]] && full_diff+="${num}^#-#${red}`sed -n "${num}p" "${1}"`${restore}#"$'\n'
+				done
+				for num in ${new_num};do
+					[[ "${num}" != "0" ]] && full_diff+="${num}^#+#${green}`sed -n "${num}p" "${2}"`${restore}#"$'\n'
+				done
+			fi
 		done <<< "${my_diff}"
 		echo -e "\n${contrast}Changes for ${green}${1}${restore}:${restore}"
 		echo "###############################################"

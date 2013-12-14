@@ -1352,12 +1352,25 @@ check_use_masked() {
 regen_world(){
 	tmp_world="$(mktemp)"
 	ex_world="$(mktemp)"
+	emerge_log="$(mktemp)"
 	mv "${WORLD}" "${ex_world}"
 	installed="$(qlist -CI | sort -u)"
 	echo "${installed}" > "${WORLD}"
 	echo -e "Calculating dependencies"
 
-	pretend="$(emerge -eopd --columns --with-bdeps=y world 2>/dev/null | grep -v "blocks" | awk '/^\[/ {print $4}')" && eend 0 2>/dev/null
+	pre_pre="$(emerge -eopd --columns --with-bdeps=y world 2>"${emerge_log}" || exit 1)"
+
+	if [[ $? == 1 ]];then
+		mv "${ex_world}" "${WORLD}"
+		cat "${emerge_log}"
+		rm "${tmp_world}" "${emerge_log}"
+		echo -e "\n${red}ERROR!!!${restore} exit\n"
+		exit 1
+	else
+		rm "${emerge_log}"
+	fi
+
+	pretend="$(grep -v "blocks" <<< "${pre_pre}" | awk '/^\[/ {print $4}')" && eend 0 2>/dev/null
 	pretend+="$(qlist -CI `emerge -epO system | awk '/\[/ {print $4}'`)"$'\n'
 
 	for atom in ${installed};do
@@ -1429,6 +1442,8 @@ regen_world(){
 	diff_ask "${WORLD}" "${tmp_world}"
 	rm "${ex_world}"
 	eend $? 2>/dev/null
+	echo -e "\n${green}Result${restore}:"
+	cat "${WORLD}"
 }
 ############################################################################
 ################ unused repo and dep-cache #################################

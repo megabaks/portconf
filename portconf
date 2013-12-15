@@ -274,6 +274,31 @@ diff_ask(){
 		while read subj;do
 			old_num="$(tr ',' ' ' <<< "${subj%[a-z]*}")"
 			new_num="$(tr ',' ' ' <<< "${subj#*[a-z]}")"
+
+			if [[ "$(wc -w <<< "${new_num}")" == "2" ]];then
+				fnn="${new_num%% *}"
+				lnn="${new_num##* }"
+				mnn="$((${fnn} + 1))"
+				new_num="${fnn}"
+				while [[ "${mnn}" != "${lnn}" ]];do
+					new_num+=" ${mnn}"
+					(( mnn++ ))
+				done
+				new_num+=" ${lnn}"
+			fi
+
+			if [[ "$(wc -w <<< "${old_num}")" == "2" ]];then
+				fon="${old_num%% *}"
+				lon="${old_num##* }"
+				mon="$((${fon} + 1))"
+				old_num="${fon}"
+				while [[ "${mon}" != "${lon}" ]];do
+					old_num+=" ${mon}"
+					(( mon++ ))
+				done
+				old_num+=" ${lon}"
+			fi
+
 			action="$(grep -o "[a-z]" <<< "${subj}")"
  			if [[ "${action}" == "a" ]];then
 				for num in ${new_num};do
@@ -998,6 +1023,27 @@ not_found(){
 		eend $? 2>/dev/null
 	done
 	unset IFS
+
+	##### don't quote it! #####
+	invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||')
+	broken_files="$(awk '{print $1}' <<< "${invalid}" | sort -u)"
+	invalid_lines(){
+		tmp_file="$(mktemp)"
+		cp "${file}" "${tmp_file}"
+		set -f
+		tlines="$(grep "^${file} " <<< "${invalid}" | sed "s|${file} ||g")"
+		while read line;do
+			sed -e "s|^`printf ${line}`.*$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i "${tmp_file}"
+		done <<< "${tlines}"
+		diff_ask "${file}" "${tmp_file}"
+		set +f
+	}
+	if [[ -n "${invalid}" ]];then
+		for bad_file in ${broken_files};do
+			file_or_dir "${bad_file#${PORT_ETC}/}" "Checking invalid lines in" "invalid_lines"
+		done
+	fi
+	unset invalid broken_files
 }
 ############################################################################
 ################ profile's uses in make.conf ###############################

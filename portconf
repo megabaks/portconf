@@ -273,31 +273,9 @@ diff_ask(){
 	if [[ -n "${my_diff}" ]];then
 		while read subj;do
 			old_num="$(tr ',' ' ' <<< "${subj%[a-z]*}")"
+			[[ "$(wc -w <<< "${old_num}")" == "2" ]] && old_num="$(seq ${old_num})"
 			new_num="$(tr ',' ' ' <<< "${subj#*[a-z]}")"
-
-			if [[ "$(wc -w <<< "${new_num}")" == "2" ]];then
-				fnn="${new_num%% *}"
-				lnn="${new_num##* }"
-				mnn="$((${fnn} + 1))"
-				new_num="${fnn}"
-				while [[ "${mnn}" != "${lnn}" ]];do
-					new_num+=" ${mnn}"
-					(( mnn++ ))
-				done
-				new_num+=" ${lnn}"
-			fi
-
-			if [[ "$(wc -w <<< "${old_num}")" == "2" ]];then
-				fon="${old_num%% *}"
-				lon="${old_num##* }"
-				mon="$((${fon} + 1))"
-				old_num="${fon}"
-				while [[ "${mon}" != "${lon}" ]];do
-					old_num+=" ${mon}"
-					(( mon++ ))
-				done
-				old_num+=" ${lon}"
-			fi
+			[[ "$(wc -w <<< "${new_num}")" == "2" ]] && new_num="$(seq ${new_num})"
 
 			action="$(grep -o "[a-z]" <<< "${subj}")"
  			if [[ "${action}" == "a" ]];then

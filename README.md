@@ -35,5 +35,5 @@ Overlays:
 	</ul>
 World:
 	<ul>
-		<li>Regenarate world</li>
+		<li>Regenerate world</li>
 	</ul>

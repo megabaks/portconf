@@ -758,6 +758,7 @@ env_not_installed(){
 ############################################################################
 ################ incorrect uses ############################################
 invalid_uses(){
+	set -f
 	FULL="${PROFILE} ${MAKE_USES}"
 	for opt in ${FULL};do
 		GLOBAL+=" $(echo ${FULL} | tr "[:space:]" $'\n' | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
@@ -811,7 +812,7 @@ invalid_uses(){
 			LOCAL="$(grep "\<${category}/${pn}\> " "${file}" | cut -d" " -f2- | sed -e "s|#.*||g" | tr "[:space:]" $'\n' | sort -u)"
 			USES="$(sed -e 's|^-||g' <<< "${LOCAL}")"
 			for use in ${USES};do
-				if ! grep -q "^${use}$" <<< "${ALL_USE}";then
+				if ! grep -q "^${use}$" <<< "${ALL_USE}" && [[ "${use}" != "*" ]];then
 					for agrep_opt in 1 2 3 B;do
 						for use_opt in "${use}" "^${use}" "${use}$" "^${use}$";do
 							similar_use="$(agrep -${agrep_opt} "${use_opt}" 2>/dev/null <<< "${ALL_USE}")"
@@ -923,6 +924,7 @@ invalid_uses(){
 		done
 	fi
 	tput cnorm
+	set +f
 }
 ############################################################################
 ################ incorrect uses in make.conf ###############################
@@ -938,6 +940,7 @@ hell_parser(){
 }
 
 invalid_uses_make(){
+	set -f
 	echo -e "${underline}Checking use flags in${restore} ${contrast}${makefile}${restore}"
 	tmp_file="$(mktemp)"
 	cp "${makefile}" "${tmp_file}"
@@ -947,7 +950,7 @@ invalid_uses_make(){
 	for var in ${vars_in_USE} USE;do
 		sub_uses="$(make_conf_use ${var} | hell_parser | grep -v '\$')"
 		for use in ${sub_uses};do
-			if ! grep -q "^${use}$" <<< "${real_uses}";then
+			if ! grep -q "^${use}$" <<< "${real_uses}" && [[ "${use}" != "*" ]];then
 				echo -ne "Invalid use ${contrast} ${var}: ${red}${use}${restore}" | column -t
 				invalid_uses+=" ${use}"
 			fi
@@ -962,6 +965,7 @@ invalid_uses_make(){
 		done
 	fi
 	diff_ask "${makefile}" "${tmp_file}"
+	set +f
 }
 ############################################################################
 ################ not_found #################################################

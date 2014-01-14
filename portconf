@@ -596,6 +596,12 @@ installed(){
 		installed_max_ver="$(tail -n1 <<< "`grep -v 9999 <<< "${installed_vers}"`")"
 		installed_live_ver="$(tail -n1 <<< "`grep 9999 <<< "${installed_vers}"`")"
 		installed_slots="$(awk -F \: '{print $2}' <<< "${installed}")"
+		#::repo check
+		full_vers="$(qlist -ICev "${category}/${pn}" | sed "s|${category}/${pn}-||g")"
+		(( "$(wc -l <<< "${full_vers}")" '>' "1" )) && full_vers="$(sed 's|^|{|;s| |,|g;s|$|}|' <<< ${full_vers})"
+		if [[ -n "${defined_repo}" ]];then
+			grep -q "^${defined_repo}$" "${PKGDB}/${category}/${pn}-${full_vers}"/repository || unset installed
+		fi
 		[[ "${installed_slots}" == "0" ]] && unset installed_slots
 	fi
 }
@@ -606,6 +612,13 @@ not_if(){
 	echo -e "${underline}Checking${restore} ${contrast}$package${restore}"
 	if [[ -n "${atoms}" ]];then
 		while read atom;do
+			#::repo check
+			if grep -q "::" <<< "${atom}";then
+				defined_repo="${atom##*::}"
+			else
+				unset defined_repo
+			fi
+			[[ -n "${defined_repo}" ]] && atom="${atom%%::${defined_repo}}"
 			while read category pn ver rev slot;do
 				sw="$(sed -e 's|^=|= |g;s|^>=|>= |g;s|^>|> |g;s|<|< |g;s| <|<|g;s| =|=|g;s|~|~ |g;s|=|= |g' <<< "${category}")"
 				if [[ "${category}" == "${sw}" ]];then
@@ -626,11 +639,15 @@ not_if(){
 				installed;
 
 				if [[ -z "${installed}" ]];then
-					echo -e "${red}Not installed${restore} ${green}${category}/${pn}${restore}"
+					if [[ -n "${defined_repo}" ]];then
+						echo -e "${red}Not installed${restore} ${green}${category}/${pn}::${underline}${defined_repo}${restore}"
+					else
+						echo -e "${red}Not installed${restore} ${green}${category}/${pn}${restore}"
+					fi
 					sed -e "s|.*\<${category}/${pn}\>.*||" -e '/^$/d' -i "${tmp_package}" 2>/dev/null
 					eend $? 2>/dev/null
 				fi
-			done <<< `qatom "${atom%%::*}"`
+			done <<< `qatom "${atom}"`
 		done <<< "${atoms}"
 	fi
 }

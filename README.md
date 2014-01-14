@@ -1,7 +1,7 @@
 portconf
 ========
 
-must be installed from stuff overlay only!
+must be installed from stuff overlay ONLY!!!
 ==========================================
 
 /etc/portage cleaner

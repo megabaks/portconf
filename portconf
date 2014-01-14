@@ -630,7 +630,7 @@ not_if(){
 					sed -e "s|.*\<${category}/${pn}\>.*||" -e '/^$/d' -i "${tmp_package}" 2>/dev/null
 					eend $? 2>/dev/null
 				fi
-			done <<< `qatom "${atom}"`
+			done <<< `qatom "${atom%%::*}"`
 		done <<< "${atoms}"
 	fi
 }

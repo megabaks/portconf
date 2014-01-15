@@ -598,9 +598,13 @@ installed(){
 		installed_slots="$(awk -F \: '{print $2}' <<< "${installed}")"
 		#::repo check
 		full_vers="$(qlist -ICev "${category}/${pn}" | sed "s|${category}/${pn}-||g")"
-		(( "$(wc -l <<< "${full_vers}")" '>' "1" )) && full_vers="$(sed 's|^|{|;s| |,|g;s|$|}|' <<< ${full_vers})"
+		(( "$(wc -l <<< "${full_vers}")" '>' "1" ))
 		if [[ -n "${defined_repo}" ]];then
-			grep -q "^${defined_repo}$" "${PKGDB}/${category}/${pn}-${full_vers}"/repository || unset installed
+			for ver in ${full_vers};do
+				all_vers+=" ${PKGDB}/${category}/${pn}-${ver}/repository"
+			done
+			grep -qe "^${defined_repo}$" ${all_vers} || unset installed
+			unset all_vers
 		fi
 		[[ "${installed_slots}" == "0" ]] && unset installed_slots
 	fi

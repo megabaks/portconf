@@ -1327,13 +1327,15 @@ remove_trash(){
 		while read line;do
 			entry="$(qatom "$(tr -d '<>=~#' <<< "${line}")" | awk '{print $1,$2}' | tr ' ' '/')"
 			if [[ "${atom}" == "${entry}" ]];then
-				if `eix -Iqe ${atom}`;then
-					echo -e "stupid entry:              ${green}${line}${restore}"
-				else
-					echo -e "stupid entry (${red}!${restore}installed): ${green}${line}${restore}"
+				if ! eix -qe --installed-masked "${entry}";then
+					if `eix -Iqe ${atom}`;then
+						echo -e "stupid entry:              ${green}${line}${restore}"
+					else
+						echo -e "stupid entry (${red}!${restore}installed): ${green}${line}${restore}"
+					fi
+					sed -e "s|${line}||" -e '/^$/d' -i "${tmp_file}"
+					break
 				fi
-				sed -e "s|${line}||" -e '/^$/d' -i "${tmp_file}"
-				break
 			fi
 		done <<< "${lines}"
 	done

@@ -32,6 +32,7 @@ IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
 ################ sort_passed_uses ##########################################
 sort_passed_uses(){
 	for opt in ${1};do
+		opt="${opt//\*/\\*}"
 		uses="$(tr "[:space:]" $'\n' <<< ${uses} | grep -v -e "^${opt#-}$" -e "^\-${opt#-}$" | tr $'\n' " ")"
 		uses+=" $(tr "[:space:]" $'\n' <<< ${1} | grep -e "^${opt#-}$" -e "^\-${opt#-}$" | tail -n1)"
 		unset opt
@@ -372,7 +373,7 @@ sort_uniq_files(){
 
 		all_atoms="$(awk '{print $1}' "${package}" | grep -v "^#"| sort -u)"
 		while read atom;do
-			opts="$(grep "^${atom} " "${package}" | uniq | cut -d" " -f2-)"
+			opts="$(grep "^${atom//\*/\\*} " "${package}" | uniq | cut -d" " -f2-)"
 			echo "${atom} ${opts//$'\n'/ }" >> "${tmp_sort}"
 		done <<< "${all_atoms}"
 
@@ -491,12 +492,21 @@ stupid_keywords(){
 			lkeys="${lkeys%%#*}"
 			lkeys="${lkeys%% }"
 			out_keys="$(tr ' ' $'\n' <<< "${lkeys}")"
-			for key in ${lkeys};do
-				if [[ "${key}" == "${KEY}" ]];then
-					echo -e "Twice defined keyword ${red}${key}${restore}:\t${green}${satom}${restore}"
-					out_keys="$(grep -v "`printf ${key}`"  <<< "${out_keys}")"
-				fi
-			done
+			#### wildcards
+			pcategory="${satom%%/*}"
+			pcategory="$(tr -d "<>=~" <<< "${pcategory}")"
+			parent_keys="$(grep -e "${pcategory}/\*" -e "\*/\*" "${1}" | sed 's|^.* ||' | sort -u)"
+			#### /wildcards
+			if [[ "${satom}" != "${pcategory}/*" && "${satom}" != "*/*" ]];then
+				for key in ${lkeys};do
+					for pkey in ${parent_keys};do
+						if [[ "${key}" == "${KEY}" || ${key} == "${pkey}" ]];then
+							echo -e "Twice defined keyword ${red}${key}${restore}:\t${green}${satom}${restore}"
+							out_keys="$(grep -v "`printf ${key}`"  <<< "${out_keys}")"
+						fi
+					done
+				done
+			fi
 			out_keys="$(tr $'\n' ' ' <<< "${out_keys}")"
 			out_keys="${out_keys% }"
 			if [[ "${lkeys}" != "${out_keys}" ]];then
@@ -512,7 +522,7 @@ stupid_keywords(){
 					string="$(grep "^${satom} ${lkeys}.*$" "${1}")"
 					fixed_string=""
 				fi
-				sed -e "s|^${string}$|${fixed_string}|"  -e '/^$/d' -i "${2}"
+				sed -e "s|^${string//\*/\\*}$|${fixed_string}|"  -e '/^$/d' -i "${2}" || echo fail 525
 			fi
 		done < "${1}"
 	done
@@ -526,7 +536,7 @@ sort_keys(){
 	for atom in ${PACKAGES};do
 		comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 		for option in \
-		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
+		"$(grep "^${atom//\*/\\*}[[:space:]]" ${file} | sed -e "s|${atom//\*/\\*} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
 			atom_opts+="${option}"
 		done
 		keys="$(sort_passed_uses "${atom_opts}")"

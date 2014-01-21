@@ -452,7 +452,7 @@ sort_uses(){
 	for atom in ${PACKAGES};do
 		comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 		for option in \
-		"$(grep "^${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
+		"$(grep "^${atom//\*/\\*}[[:space:]]" ${file} | sed -e "s|${atom//\*/\\*} ||" -e "s|#.*${comment}||" | tr "[:space:]" $'\n' | uniq | tr $'\n' " ")";do
 			atom_opts+="${option}"
 		done
 		uses="$(sort_passed_uses "${atom_opts}")"

@@ -386,7 +386,9 @@ sort_uniq_files(){
 ############################################################################
 ################ file or dir... ############################################
 file_or_dir(){
-	founded="$(ls -d1 ${PORT_ETC}/${1} 2>/dev/null)"
+	for i in ${1};do
+		founded+=" $(ls -d1 ${PORT_ETC}/${i} 2>/dev/null)"
+	done
 	if [[ -z "${founded}" ]];then
 		echo -e "${underline}${2}${restore}${contrast}${PORT_ETC}/${1}${restore}: No such file or directory${restore}"
 		eend 1 2>/dev/null
@@ -594,7 +596,7 @@ sort_keywords(){
 ############################################################################
 ################ uniq_keyword ##############################################
 uniq_keywords(){
-	file_or_dir "package.{accept_,}keywords" "Sorting keywords in" "set -f" "sort_keys" "set +f" || return 1
+	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_keys" "set +f" || return 1
 }
 ############################################################################
 ################ not_installed #############################################
@@ -1411,7 +1413,11 @@ use_mask() {
 }
 
 etc_profile_use_mask() {
-	orig_file="${PORT_ETC}/profile/use.mask"
+	if [[ -f "${PORT_ETC}/profile/use.mask" ]];then
+		orig_file="${PORT_ETC}/profile/use.mask"
+	else
+		return 1
+	fi
 	tmp_file="$(mktemp)"
 	cp "${orig_file}" "${tmp_file}"
 	while read use;do

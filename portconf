@@ -594,7 +594,7 @@ sort_keywords(){
 ############################################################################
 ################ uniq_keyword ##############################################
 uniq_keywords(){
-	file_or_dir "package.keywords package.accept_keywords" "Sorting keywords in" "set -f" "sort_keys" "set +f" || return 1
+	file_or_dir "package.{accept_,}keywords" "Sorting keywords in" "set -f" "sort_keys" "set +f" || return 1
 }
 ############################################################################
 ################ not_installed #############################################

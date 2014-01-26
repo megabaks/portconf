@@ -386,6 +386,7 @@ sort_uniq_files(){
 ############################################################################
 ################ file or dir... ############################################
 file_or_dir(){
+	local founded
 	for i in ${1};do
 		founded+=" $(ls -d1 ${PORT_ETC}/${i} 2>/dev/null)"
 	done
@@ -1231,16 +1232,16 @@ package_envs(){
 ############################################################################
 ################ mask/unmask trash #########################################
 all_mask_trash(){
-	mask_trash(){
+	pre_mask_trash(){
 		masked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
 		MASKED+="$(package_envs "${masked}")"$'\n'
 	}
-	file_or_dir "package.mask" "Preparing atoms in" "mask_trash" || return 1
-	unmask_trash(){
+	file_or_dir "package.mask" "Preparing atoms in" "pre_mask_trash" || return 1
+	pre_unmask_trash(){
 		unmasked="$(awk '{print $1}' ${file} | grep -v '^#.*')"
 		UNMASKED+="$(package_envs "${unmasked}")"$'\n'
 	}
-	file_or_dir "package.unmask" "Preparing atoms in" "unmask_trash" || return 1
+	file_or_dir "package.unmask" "Preparing atoms in" "pre_unmask_trash" || return 1
 }
 mask_trash(){
 	slot_output(){
@@ -1750,7 +1751,7 @@ ${contrast}Trash${restore}:
 	--stupid-unmask, -sum        Remove incorrect unmasked atoms.
 	--rm-comments, -c:           Delete lines starting with comment.
 	--rm-all-comments, -ac:      Delete all comments.
-	--full, -f:                  An analog '-s -t -uf -ku'
+	--full, -f:                  An analog '-s -t -uf -ku -sm -sum'
 ${contrast}Converting${restore}:
 	--files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
 	--dirs-2-files, -d2f:        Converting package.* dirs to files.
@@ -1795,8 +1796,8 @@ else
 	opts="$(sed -e 's| --regen-cache\>||g;s| -rc\>||g' -e '/^[ \t]$/d' <<< " ${opts}")"
 fi
 [[ -z "${@}" || -z "${opts}" ]] && help_pc
-for opt in ${opts};do
-	case "${opt}" in
+for OPT in ${opts};do
+	case "${OPT}" in
 	--backup | -b ) backup;;
 	--restore | -r ) etc_restore;;
 	--sort | -s )

@@ -637,13 +637,8 @@ not_if(){
 			fi
 			[[ -n "${defined_repo}" ]] && atom="${atom%%::${defined_repo}}"
 			while read category pn ver rev slot;do
-				sw="$(sed -e 's|^=|= |g;s|^>=|>= |g;s|^>|> |g;s|<|< |g;s| <|<|g;s| =|=|g;s|~|~ |g;s|=|= |g' <<< "${category}")"
-				if [[ "${category}" == "${sw}" ]];then
-					unset sw
-				else
-					sw="$(awk '{print $1}' <<< "${sw}")"
-					category="${category##${sw}}"
-				fi
+				sw="$(grep -o "[<>=~]" <<< "${category}" | tr -d $'\n')"
+				category="${category##${sw}}"
 
 				[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
 
@@ -1193,7 +1188,7 @@ ver_diff(){
 	check="$(versionsort ${1} ${2} 2>/dev/null | tail -n1)"
 	[[ "${check}" == "${1}" && "${check}" != "${2}" ]] && echo 1 # ${1} > ${2}
 	[[ "${check}" == "${2}" && "${check}" != "${1}" ]] && echo 2 # ${2} > ${1}
-	[[ "${check}" == "${1}" && "${check}" == "${2}" ]] && echo 0 # ${1} == ${2}
+	[[ "${check}" == "${1}" && "${check}" == "${2}" ]] && echo 0 # ${1} = ${2}
 }
 ############################################################################
 ################ version between ###########################################
@@ -1209,13 +1204,8 @@ ver_btwn(){
 package_envs(){
 	for atom in ${1};do
 		while read category pn ver rev slot;do
-			sw="$(sed -e 's|^=|= |g;s|^>=|>= |g;s|^>|> |g;s|<|< |g;s| <|<|g;s| =|=|g;s|~|~ |g;s|=|= |g' <<< "${category}")"
-			if [[ "${category}" == "${sw}" ]];then
-				sw="(null)"
-			else
-				sw="$(awk '{print $1}' <<< "${sw}")"
-				category="${category##${sw}}"
-			fi
+			sw="$(grep -o "[<>=~]" <<< "${category}" | tr -d $'\n')"
+			category="${category##${sw}}"
 			[[ "${category}" == "(null)" || "${pn}" == "(null)" ]] && continue
 			if [[ -n "${rev}" && -z "${slot}" ]] && grep -q \: <<< "${rev}";then
 				slot="${rev}"

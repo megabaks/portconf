@@ -1566,7 +1566,6 @@ overlays(){
 		output="${i#${PKGDB}/}"
 		output="${output%/repository}"
 		echo -n "${output}"
-# 		echo -n "$(sed "s|${PKGDB}/||1;s|/repository||1" <<< "${i}")"
 		tput rc
 		used_repos+="$(grep -sv '^gentoo$' "${i}")"$'\n'
 	done

@@ -1557,7 +1557,22 @@ overlays(){
 	all_overlays="$(sort -u <<< "${all_overlays}" | sed '/^$/d')"
 
 	######## parent_repo for installed packages
-	used_repos="$(cat ${PKGDB}/*/*/repository | sort -u | grep -v gentoo)"
+	echo "Checking installed packages..."
+	tput sc
+	tput civis
+	for i in ${PKGDB}/*/*/repository;do
+		tput el
+		tput el1
+		output="${i#${PKGDB}/}"
+		output="${output%/repository}"
+		echo -n "${output}"
+# 		echo -n "$(sed "s|${PKGDB}/||1;s|/repository||1" <<< "${i}")"
+		tput rc
+		used_repos+="$(grep -sv '^gentoo$' "${i}")"$'\n'
+	done
+	tput el
+	tput cnorm
+	used_repos="$(sort -u <<< "${used_repos%$'\n'}")"
 
 	for repo in ${used_repos};do
 		repo_path="$(grep " ${repo}$" <<< "${portage_overlays}" | awk '{print $1}')"

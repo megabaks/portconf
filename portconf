@@ -43,8 +43,7 @@ sort_passed_uses(){
 ############################################################################
 ################ profile ###################################################
 profile() {
-	local use
-	local path
+	local use path
 	[[ -f "${1}/make.defaults" ]] && . "${1}/make.defaults"
 	use="$USE"
 	if [[ -f "${1}/parent" ]]; then
@@ -112,7 +111,7 @@ timestamp(){
 repo_fix(){
 	if [[ -n "${PORTDIR_OVERLAY}" ]];then
 		for path in ${PORTDIR_OVERLAY};do
-			local_categories="$(ls -1 ${path}/*/*/*.ebuild | sed -e "s|${path}/||g;s|/.*||g" | sort -u)"
+			local_categories="$(ls -d1 ${path}/{*-*,virtual} 2>/dev/null | sed -e "s|${path}/||g" | sort -u)"
 			portage_categoties="$(cat ${PORTDIR}/profiles/categories)"
 			if [[ -n "$(grep -v "${portage_categoties}" <<< "${local_categories}")" ]];then
 				if [[ ! -f "${path}/profiles/categories" ]];then
@@ -741,28 +740,26 @@ env_not_installed(){
 					full_ver="${ver}"
 				fi
 
-				if [[ -n "${rev}" ]] && [[ -z "${slot}" ]] && `grep -q \: <<< "${rev}"`;then
-					slot="${rev}"
-				fi
+				[[ -n "${rev}" && -z "${slot}" ]] && grep -q \: <<< "${rev}" && slot="${rev}"
 				slot="${slot#:}"
 
-				if [[ -z "${ver}" ]] && [[ -z "${slot}" ]];then
-					if ! `ls -d1 ${PKGDB}/${category}/${pn}-[0-9]* &>/dev/null`;then
+				if [[ -z "${ver}" && -z "${slot}" ]];then
+					if ! ls -d1 ${PKGDB}/${category}/${pn}-[0-9]* &>/dev/null;then
 						echo -e "${red}Not installed${restore} ${green}${category}/${pn}${restore}"
 						RM+="${PORT_ETC}/${x}/${file}%"
 						eend $? 2>/dev/null
 					fi
 				fi
 
-				if [[ -n "${ver}" ]] && [[ -z "${slot}" ]] ;then
-					if ! `ls -d1 ${PKGDB}/${category}/${pn}-${full_ver} &>/dev/null`;then
+				if [[ -n "${ver}" && -z "${slot}" ]] ;then
+					if ! ls -d1 ${PKGDB}/${category}/${pn}-${full_ver} &>/dev/null;then
 						echo -e "${red}Not installed${restore} ${green}${category}/${pn}-${full_ver}${restore}"
 						RM+="${PORT_ETC}/${x}/${file}%"
 						eend $? 2>/dev/null
 					fi
 				fi
 
-				if [[ -z "${ver}" ]] && [[ -n "${slot}" ]] ;then
+				if [[ -z "${ver}" && -n "${slot}" ]] ;then
 					if [[ -z "$(cat ${PKGDB}/${category}/${pn}-[0-9]*/SLOT 2>/dev/null | grep ${slot})" ]];then
 						echo -e "${red}Not installed${restore} ${green}${category}/${pn}:${slot}${restore}"
 						RM+="${PORT_ETC}/${x}/${file}%"
@@ -1399,7 +1396,6 @@ use_mask() {
 	for target in $(mask_files);do
 		profile_masked_uses "$(readlink -f ${makeprof})" "${target}"
 	done
-
 	sort_passed_uses "${all_uses} " | tr "[:space:]" $'\n'
 }
 

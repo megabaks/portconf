@@ -19,7 +19,7 @@ PORT_ETC="/etc/portage"
 WORLD="/var/lib/portage/world"
 ARCH="$(eix --print DEFAULT_ARCH)"
 [[ -f "/etc/portconf.conf" ]] && . /etc/portconf.conf
-[[ -z "${COUNT}" ]] && COUNT="10"
+COUNT="${COUNT:-10}"
 ############################################################################
 ################ ignore ####################################################
 [[ -n "${IGNORE_CATEGORY}" ]] && IGNORE_CATEGORY="$(sed -e '/^$/d' -e 's/$/\/.*/g' <<< "`tr "[:space:]" $'\n' <<< "${IGNORE_CATEGORY}"`")"
@@ -27,7 +27,7 @@ ARCH="$(eix --print DEFAULT_ARCH)"
 IGNORE="${IGNORE_CATEGORY}
 ${IGNORE_PN}"
 IGNORE="$(sed -e '/^$/d' <<< "${IGNORE}")"
-[[ -z "${IGNORE}" ]] && IGNORE="Hello, LOR!!! :3"
+IGNORE="${IGNORE:-'Hello, LOR! :3'}"
 ############################################################################
 ################ sort_passed_uses ##########################################
 sort_passed_uses(){
@@ -100,7 +100,7 @@ current_profile(){
 . "${makefile}" 2>/dev/null
 MAKE_USES="${USE}"
 unset USE
-[[ -z "${PORTDIR}" ]] && PORTDIR="/usr/portage"
+PORTDIR="${PORTDIR:-/usr/portage}"
 ############################################################################
 ################ timestamp #################################################
 timestamp(){
@@ -188,14 +188,14 @@ backup(){
 	oldest="$(head -n1 <<< "${tarballs}")"
 	newest="$(tail -n1 <<< "${tarballs}")"
 	count="$( wc -l <<< "${tarballs}")"
-	[[ -z "${count}" ]] && count="0"
+	count="${count:-0}"
 	if [[ -f "/etc/make.conf" ]];then
 		etc_update="$(timestamp ${PORT_ETC}/{*,*/*,*/*/*,*/*/*/*} /etc/make.conf)"
 	else
 		etc_update="$(timestamp ${PORT_ETC}/{*,*/*,*/*/*,*/*/*/*})"
 	fi
 	portconf_update="$(timestamp ${BRDIR}/*)"
-	[[ -z "${portconf_update}" ]] && portconf_update="0"
+	portconf_update="${portconf_update:-0}"
 	if (( "${etc_update}" > "${portconf_update}" ));then
 		if (( "${count}" >= "${COUNT}" ));then
 			rm "${BRDIR}/${oldest}"
@@ -222,10 +222,10 @@ world_backup(){
 	oldest="$(head -n1 <<< "${tarballs}")"
 	newest="$(tail -n1 <<< "${tarballs}")"
 	count="$( wc -l <<< "${tarballs}")"
-	[[ -z "${count}" ]] && count="0"
+	count="${count:-0}"
 	world_update="$(timestamp ${WORLD})"
 	portconf_update="$(timestamp ${world_dir}/*)"
-	[[ -z "${portconf_update}" ]] && portconf_update="0"
+	portconf_update="${portconf_update:-0}"
 	if (( "${world_update}" > "${portconf_update}" ));then
 		if (( "${count}" >= "${COUNT}" ));then
 			rm "${world_dir}/${oldest}"
@@ -543,7 +543,7 @@ sort_keys(){
 		done
 		keys="$(sort_passed_uses "${atom_opts}")"
 		keys="$(sed -e "s|^- | |g" -e "s| -- ||g" -e "s| - | |g" <<< ${keys})"
-		[[ -z "${keys}" ]] && keys="~${ARCH}"
+		keys="${keys:-"~${ARCH}"}"
 		if [[ -n "${comment}" ]];then
 			echo "${atom} ${keys} #${comment}" >> "${tmp_file}"
 		else
@@ -577,7 +577,7 @@ sort_keywords(){
 			comment="$(grep "${atom}[[:space:]].*#" "${file}" | cut -d\# -f2-)"
 			keyword="$(grep "${atom}[[:space:]]" ${file} | sed -e "s|${atom} ||" -e "s|#.*${comment}||" |\
 						tr "[:space:]" $'\n' | sed '/^$/d' | tail -n1)"
-			[[ -z "${keyword}" ]] && keyword="~${ARCH}"
+			keyword="${keyword:-"~${ARCH}"}"
 			if [[ -n "${comment}" ]];then
 				echo "${atom} ${keyword} #${comment}" >> "${tmp_file}"
 			else
@@ -956,7 +956,7 @@ invalid_uses(){
 ################ incorrect uses in make.conf ###############################
 make_conf_use() {
 	defined_flags="$(grep "${1}=\".*\"" ${makefile})"
-	[[ -z "${defined_flags}" ]] && defined_flags="$(sed -ne "/${1}=\"/,/\"/p" ${makefile})"
+	defined_flags="${defined_flags:-"$(sed -ne "/${1}=\"/,/\"/p" ${makefile})"}"
 	echo "${defined_flags}"
 }
 
@@ -1210,8 +1210,8 @@ package_envs(){
 			fi
 			slot="${slot#:}"
 			pn="${pn%:}"
-			[[ -z "${rev}" ]] && rev="(null)"
-			[[ -z "${slot}" ]] && slot="(null)"
+			rev="${rev:-(null)}"
+			slot="${slot:-(null)}"
 			echo "${sw} ${category} ${pn} ${ver} ${rev} ${slot} ${file}"
 		done <<< `qatom "${atom}"`
 	done
@@ -1538,7 +1538,7 @@ overlays(){
 	layman_pkgdir="$(tr '[[:space:]]' $'\n' <<< "${PORTDIR_OVERLAY}" | sed '/^$/d')"
 	for repo_dir in ${layman_pkgdir};do
 		[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
-		[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+		repo_name="${repo_name:-${repo_dir##*/}}"
 		layman_overlays+="${repo_dir} ${repo_name}"$'\n'
 	done
 
@@ -1550,7 +1550,7 @@ overlays(){
 	unset PORTDIR_OVERLAY
 	for repo_dir in ${portage_pkdir};do
 		[[ -f "${repo_dir}/profiles/repo_name" ]] && repo_name="$(cat "${repo_dir}/profiles/repo_name")"
-		[[ -z "${repo_name}" ]] && repo_name="${repo_dir##*/}"
+		repo_name="${repo_name:-${repo_dir##*/}}"
 		portage_overlays+="${repo_dir} ${repo_name}"$'\n'
 	done
 	all_overlays+="${portage_overlays}"

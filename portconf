@@ -719,7 +719,7 @@ ${conf}"
 ############################################################################
 ################ env not_installed #########################################
 env_not_installed(){
-	echo -e "${underline}Looking not installed in ${restore} ${contrast}${PORT_ETC}/env${restore}"
+	echo -e "${underline}Looking not installed in${restore} ${contrast}${PORT_ETC}/env${restore}"
 	package_env;
 	for x in "env" "env.d";do
 		files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f \! -name '*~' \! -name '*.bak' 2>/dev/null| cut -d\/ -f5-)"
@@ -797,16 +797,14 @@ invalid_uses(){
 		export OVERLAYS_LIST="no"
 		export FORMAT='<availableversions:USEONLY>'
 		export USEONLY=' <colliuse>'
-
-		while read category pn ver slot;do
 		#### just count
-			tput sc
-			tput civis
+		tput sc
+		tput civis
+		while read category pn ver slot;do
 			tput el
 			tput el1
 			echo -ne "["; printf "% ${chars}d" $((count--));echo -ne " ]" "atoms left" 2>/dev/null
 			tput rc
-
 			prepare(){
 				while read string;do
 					struse="${string#${category}/${pn}}"
@@ -996,8 +994,9 @@ invalid_uses_make(){
 ############################################################################
 ################ not_found #################################################
 not_found(){
+	echo -e "${underline}Checking invalid entries${restore}..."
 	TRASH="$(LANG=en eix -Ttc 2>/dev/null)"
-	for package in `ls -d1 ${PORT_ETC}/package* | grep -v "~"`;do
+	for package in $(ls -d1 ${PORT_ETC}/package* | grep -v -e "~" -e "\.bak" -e "\.old");do
 		incorrect="$(echo -e "${TRASH}" | tr $'\n' "%" | sed -e "s|.*${package}:||" -e 's|--.*||' -e 's|No.*||'|\
 		tr "%" $'\n' | sed -e '/^$/d' | grep -v "${IGNORE}")"
 		if [[ -n "${incorrect}" && -f "${package}" ]];then
@@ -1042,6 +1041,7 @@ not_found(){
 		echo -e "${red}Incorrect:${restore} ${line}"
 		line="${line//'*'/\*}"
 		line="${line#[[:space:]]}"
+		INVALID_FOUNDED+="${line}"$'\n'
 
 		if [[ -n "${line}" && -f "${file}" ]];then
 			tmp_file="$(mktemp)"
@@ -1063,7 +1063,8 @@ not_found(){
 	unset IFS
 
 	##### don't quote it! #####
-	invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||')
+	invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||' |\
+			grep -v "${INVALID_FOUNDED}")
 	broken_files="$(awk '{print $1}' <<< "${invalid}" | sort -u)"
 	invalid_lines(){
 		tmp_file="$(mktemp)"
@@ -1078,7 +1079,7 @@ not_found(){
 	}
 	if [[ -n "${invalid}" ]];then
 		for bad_file in ${broken_files};do
-			file_or_dir "${bad_file#${PORT_ETC}/}" "Checking invalid lines in" "invalid_lines"
+			file_or_dir "${bad_file#${PORT_ETC}/}" "Founded invalid lines in" "invalid_lines"
 		done
 	fi
 	unset invalid broken_files
@@ -1210,9 +1211,7 @@ package_envs(){
 			fi
 			slot="${slot#:}"
 			pn="${pn%:}"
-			rev="${rev:-(null)}"
-			slot="${slot:-(null)}"
-			echo "${sw} ${category} ${pn} ${ver} ${rev} ${slot} ${file}"
+			echo "${sw} ${category} ${pn} ${ver} ${rev:-(null)} ${slot:-(null)} ${file}"
 		done <<< `qatom "${atom}"`
 	done
 }
@@ -1300,7 +1299,7 @@ mask_trash(){
 					fi
 				fi
 			fi
-		done <<< "`grep " ${mcategory} ${mpn} " <<< "${UNMASKED}"`"
+		done <<< "$(grep " ${mcategory} ${mpn} " <<< "${UNMASKED}")"
 	done <<< "${MASKED}"
 
 	files="$(awk '{print $1}' <<< "${TRASH}" | sort -u | sed '/^$/d')"

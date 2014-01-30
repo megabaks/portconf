@@ -690,6 +690,30 @@ force_not_installed(){
 	done
 }
 ############################################################################
+################ package.env conf ##########################################
+package_env_conf(){
+	all_confs="$(find ${PORT_ETC}/env/ -maxdepth 1 -type f)"
+	all_confs="${all_confs//${PORT_ETC////\/}\/env\//}"
+	check_env_conf(){
+		atoms="$(sed 's/^[ \t]*//;s/[ \t]*$//;/^#/d;/^$/d;' < ${file} | awk '{print $1}')"
+		while read line;do
+			line="$(sed 's/^[ \t]*//;s/[ \t]*$//' <<< "${line%%#*}")"
+			for atom in ${atoms};do
+				USED_ENV+=" ${line#${atom} }"
+			done
+		done < "${file}"
+		USED_ENV="$(tr ' ' $'\n' <<< "${USED_ENV}")"
+		for conf in ${all_confs};do
+			if ! grep -q "^${conf}$" <<< "${USED_ENV}";then
+				echo -e "Unused conf: ${red}${conf}${restore}"
+				remove_ask "${PORT_ETC}/env/${conf}"
+				eend $? 2>/dev/null
+			fi
+		done
+	}
+	file_or_dir "package.env" "Checking unused configs in" "check_env_conf" || return 1
+}
+############################################################################
 ################ package.env workaround ####################################
 package_env(){
 	for package in `find ${PORT_ETC}/ -name "package.*" \! -name '*~' \! -name '*.bak'`;do
@@ -1839,6 +1863,7 @@ for OPT in ${opts};do
 		backup;
 		not_found;
 		env_not_installed;
+		package_env_conf;
 		empty_files;
 		backup_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
@@ -1852,6 +1877,7 @@ for OPT in ${opts};do
 		backup;
 		not_found;
 		env_not_installed;
+		package_env_conf;
 		force_not_installed;
 		empty_files;
 		backup_files;
@@ -1867,6 +1893,7 @@ for OPT in ${opts};do
 		sort_uniq_files;
 		not_found;
 		env_not_installed;
+		package_env_conf;
 		sort_use_file;
 		sort_uniq_mask_use;
 		invalid_uses;

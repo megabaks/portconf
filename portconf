@@ -1768,7 +1768,7 @@ ${contrast}\${KEYWORDS}${restore}:
 	--keyword-uniq, -ku:         Like '-us', but for keywords.
 	--keyword-one, -ko:          Save only latest defined keyword.
 ${contrast}Trash${restore}:
-	--trash, -t:                 Delete not_founded/not_installed entries, empty and backup files.
+	--trash, -t:                 Delete not_founded/not_installed entries, empty/backup/unused files.
 	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
 	--stupid-mask, -sm           Remove incorrect masked atoms.
 	--stupid-unmask, -sum        Remove incorrect unmasked atoms.

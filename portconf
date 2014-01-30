@@ -714,37 +714,36 @@ package_env_conf(){
 	file_or_dir "package.env" "Checking unused configs in" "check_env_conf" || return 1
 }
 ############################################################################
-################ package.env workaround ####################################
+################ package.env ###############################################
 package_env(){
-	for package in `find ${PORT_ETC}/ -name "package.*" \! -name '*~' \! -name '*.bak'`;do
-		if [[ "${package##*/}" == "package.env" ]];then
-			if [[ -f "${package}" ]];then
-				while read line;do
-					atom="${line%% *}"
-					for conf in ${line#${atom} };do
-						[[ -f "${PORT_ETC}/env/${conf}" ]] && IGNORE="${IGNORE}
-${conf}"
-					done
-				done < "${package}"
-			elif [[ -d "${package}" ]];then
-				for subpackage in `find "${package}" -type f \! -name '*~' \! -name '*.bak'`;do
-					while read line;do
-						atom="${line%% *}"
-						for conf in ${line#${atom} };do
-							[[ -f "${PORT_ETC}/env/${conf}" ]] && IGNORE="${IGNORE}
-${conf}"
-						done
-					done < "${subpackage}"
-				done
-			fi
-		fi
-	done
+	package_env_def(){
+		tmp_file="$(mktemp)"
+		cp "${file}" "${tmp_file}"
+		while read line;do
+			xline="$(sed 's/^[ \t]*//;s/[ \t]*$//' <<< "${line%%#*}")"
+			atom="${xline%% *}"
+			all_confs="${xline#${atom} }"
+			for conf in ${all_confs};do
+				if [[ -f "${PORT_ETC}/env/${conf}" ]];then
+					IGNORE+=$'\n'"${conf}"
+				else
+					echo -e "Defined conf not exists: ${red}${conf}${restore}"
+					new_line=$(grep -v "^${conf}$" <<< "$(tr ' ' $'\n' <<< "${line}")" | tr $'\n' ' ')
+					new_line="$(sed 's/^[ \t]*//;s/[ \t]*$//' <<< "${new_line}")"
+					sed "s|${line}|${new_line}|" -i "${tmp_file}"
+					line="${new_line}"
+				fi
+			done
+		done < "${file}"
+		diff_ask "${file}" "${tmp_file}"
+		eend $? 2>/dev/null
+	}
+	file_or_dir "package.env" "Checking defined configs in" "package_env_def" || return 1
 }
 ############################################################################
 ################ env not_installed #########################################
 env_not_installed(){
 	echo -e "${underline}Looking not installed in${restore} ${contrast}${PORT_ETC}/env${restore}"
-	package_env;
 	for x in "env" "env.d";do
 		files="$(find ${PORT_ETC}/${x}/ -mindepth 2 -maxdepth 2 -type f \! -name '*~' \! -name '*.bak' 2>/dev/null| cut -d\/ -f5-)"
 		[[ -n "${IGNORE}" ]] && files="$(grep -v "${IGNORE}" <<< "${files}")"
@@ -1862,8 +1861,9 @@ for OPT in ${opts};do
 	--trash | -t )
 		backup;
 		not_found;
-		env_not_installed;
 		package_env_conf;
+		package_env;
+		env_not_installed;
 		empty_files;
 		backup_files;
 		[[ -n "${eix_cache}" ]] && rm "${eix_cache}" && unset eix_cache EIX_CACHEFILE;;
@@ -1876,8 +1876,9 @@ for OPT in ${opts};do
 	--force-trash | -ft )
 		backup;
 		not_found;
-		env_not_installed;
 		package_env_conf;
+		package_env;
+		env_not_installed;
 		force_not_installed;
 		empty_files;
 		backup_files;
@@ -1892,8 +1893,9 @@ for OPT in ${opts};do
 		backup;
 		sort_uniq_files;
 		not_found;
-		env_not_installed;
 		package_env_conf;
+		package_env;
+		env_not_installed;
 		sort_use_file;
 		sort_uniq_mask_use;
 		invalid_uses;

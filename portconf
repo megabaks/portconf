@@ -1746,44 +1746,46 @@ help_pc(){
 echo -e \
 "Usage: portconf [OPTION] [OPTION]…[OPTION]
 available OPTIONS:
-${contrast}Common${restore}:
-	--regen-cache, -rc:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
-	--backup, -b:                Create backup for current /etc/portage state.
-	--restore, -r:               Rolling up /etc/portage to one of available states.
-	--sort, -s:                  Sort entries alphabetically, --use-sort, --keyword-uniq.
-	--yes, -y:                   Auto answer (Yes).
-	--pretend, -p:               Check only.
-	--help, -h, -?, h:           This help.
-${contrast}\${USE}${restore}:
-	--use-sort, -us:             Sort useflags. Remove doubles and preserve only last defined state (on/off).
-	--use-invalid, -ui:          Delete invalid or twice global-defined useflags.
-	--use-make, -um:             Delete profile defined useflags from make.conf.
-	--stupid-use-profile, -sup   Delete incorrect or twice masked/unmasked useflags.
-	--use-full, -uf:             An analog '-us -ui -um -sup'.
+
+${contrast}Common${restore}
+	-rc, --regen-cache:          Create and use temporary eix-cache and some fix for overlays. ${red}Highly recommend!${restore}
+	-b,  --backup:               Create backup for current /etc/portage state.
+	-r,  --restore:              Rolling up /etc/portage to one of available states.
+	-s,  --sort:                 Sort entries alphabetically, --use-sort, --keyword-uniq.
+	-y,  --yes:                  Auto answer (Yes).
+	-p,  --pretend:              Check only.
+	-h,  -h, -?, h, --help:      This help.
+${contrast}\${USE}${restore}
+	-us, --use-sort:             Sort useflags. Remove doubles and preserve only last defined state (on/off).
+	-ui, --use-invalid:          Delete invalid or twice global-defined useflags.
+	-um, --use-make:             Delete profile defined useflags from make.conf.
+	-sup,--stupid-use-profile:   Delete incorrect or twice masked/unmasked useflags.
+	-uf, --use-full:             An analog '-us -ui -um -sup'.
 ${contrast}\${KEYWORDS}${restore}:
-	--keyword-uniq, -ku:         Like '-us', but for keywords.
-	--keyword-one, -ko:          Save only latest defined keyword.
+	-ku, --keyword-uniq:         Like '-us', but for keywords.
+	-ko, --keyword-one:          Save only latest defined keyword.
 ${contrast}Trash${restore}:
-	--trash, -t:                 Delete not_founded/not_installed entries, empty/backup/unused files.
-	--force-trash, -ft:          Delete all not_installed entries.(exclude package.mask file/dir)
-	--stupid-mask, -sm           Remove incorrect masked atoms.
-	--stupid-unmask, -sum        Remove incorrect unmasked atoms.
-	--rm-comments, -c:           Delete lines starting with comment.
-	--rm-all-comments, -ac:      Delete all comments.
-	--full, -f:                  An analog '-s -t -uf -ku -sm -sum'
+	-t,   --trash:               Delete not_founded/not_installed entries, empty/backup/unused files.
+	-ft,  --force-trash:         Delete all not_installed entries.(exclude package.mask file/dir)
+	-sm,  --stupid-mask:         Remove incorrect masked atoms.
+	-sum, --stupid-unmask:       Remove incorrect unmasked atoms.
+	-c,   --rm-comments:         Delete lines starting with comment.
+	-ac,  --rm-all-comments:     Delete all comments.
+	-f,   --full:                An analog '-s -t -uf -ku -sm -sum'
 ${contrast}Converting${restore}:
-	--files-2-dirs, -f2d:        Converting package.* files to directories(comments will be removed).
-	--dirs-2-files, -d2f:        Converting package.* dirs to files.
+	-f2d, --files-2-dirs:        Converting package.* files to directories(comments will be removed).
+	-d2f, --dirs-2-files:        Converting package.* dirs to files.
 ${contrast}Profile${restore}:
-	--all-profiles-use, -apu:    List \${USE} defined in profiles.
-	--profiles-use, -pu:         List \${USE} of profile.
-	--current-profile-use, -cpu: \${USE} of current profile.
+	-apu, --all-profiles-use:    List \${USE} defined in profiles.
+	-pu,  --profiles-use:        List \${USE} of profile.
+	-cpu, --current-profile-use: \${USE} of current profile.
 ${contrast}World${restore}:
-	--world-backup, -wb:         Create backup for current world file state.
-	--world-restore, -wr:        Rolling up world file to one of available states.
-	--world-regen, -wg:          Regen(cleanup) the world file.(backup: auto)
+	-wb, --world-backup:         Create backup for current world file state.
+	-wr, --world-restore:        Rolling up world file to one of available states.
+	-wg, --world-regen:          Regen(cleanup) the world file.(backup: auto)
 ${contrast}Overlays${restore}:
-	--fix-repos, -fr:            Remove unused overlays and dep-cache.
+	-fr, --fix-repos:            Remove unused overlays and dep-cache.
+
 OPTIONS must be separated by SPACE."
 }
 ############################################################################

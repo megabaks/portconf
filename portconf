@@ -165,9 +165,6 @@ Create temporary cache?${restore} [${green}Yes${restore}/${red}No${restore}] ";
 						eix_check
 						break;;
 					No | NO | no | N | n )
-						repo_fix
-						eix-update
-						rm_repo_fix
 						break;;
 					* ) echo -ne "Sorry, response '${x}' not understood. [${green}Yes${restore}/${red}No${restore}] "
 						continue;;

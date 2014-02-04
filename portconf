@@ -1711,9 +1711,9 @@ overlays(){
 				elif [[ -d "${repo_path}" && "$(ls -A ${dep_path})" && -f "${dep_file}" ]];then
 					file_stamp="$(timestamp "${dep_file}")"
 					path_stamp="$(timestamp ${dep_path}/{*,*/*,*/*/*,*/*/*/*})"
-					if (( "${file_stamp}" > "${path_stamp}" ));then
+					if [[ -n "${file_stamp}" && -n "${path_stamp}" ]] && (( "${file_stamp}" > "${path_stamp}" ));then
 						TRASH+="${dep_path}/* "
-					elif (( "${file_stamp}" < "${path_stamp}" ));then
+					elif [[ -n "${file_stamp}" && -n "${path_stamp}" ]] && (( "${file_stamp}" < "${path_stamp}" ));then
 						TRASH+="${dep_file} "
 					fi
 				fi

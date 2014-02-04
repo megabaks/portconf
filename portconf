@@ -1083,8 +1083,12 @@ not_found(){
 	unset IFS
 
 	##### don't quote it! #####
-	invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||' |\
+	if [[ -n "${INVALID_FOUNDED}" ]];then
+		invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||' |\
 			grep -v "${INVALID_FOUNDED}")
+	else
+		invalid=$(emerge --version 2>&1 | sed -e '/--- Invalid atom in /!d' -e 's|--- Invalid atom in ||g;s|:||')
+	fi
 	broken_files="$(awk '{print $1}' <<< "${invalid}" | sort -u)"
 	invalid_lines(){
 		tmp_file="$(mktemp)"
@@ -1092,7 +1096,7 @@ not_found(){
 		set -f
 		tlines="$(grep "^${file} " <<< "${invalid}" | sed "s|${file} ||g")"
 		while read line;do
-			sed -e "s|^`printf ${line}`.*$||" -e 's|[ \t]| |' -e '/^[ \t]$/d' -e '/^$/d' -i "${tmp_file}"
+			sed -e "s|^`printf ${line}`.*$||;s|^${line//\*/\\*}.*$||" -e 's|[ \t]| |;/^[ \t]$/d;/^$/d' -i "${tmp_file}"
 		done <<< "${tlines}"
 		diff_ask "${file}" "${tmp_file}"
 		set +f

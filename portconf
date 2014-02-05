@@ -104,7 +104,7 @@ PORTDIR="${PORTDIR:-/usr/portage}"
 ############################################################################
 ################ timestamp #################################################
 timestamp(){
-	ls -dgo --time-style=+%s --color=never ${*} 2>/dev/null | awk '{print $4}' | sort | tail -n1
+	stat -c %Y ${*} 2>/dev/null | sort | tail -n1
 }
 ############################################################################
 ################ repo fix ##################################################
@@ -1710,7 +1710,7 @@ overlays(){
 					TRASH+="${dep_path} "
 				elif [[ -d "${repo_path}" && "$(ls -A ${dep_path})" && -f "${dep_file}" ]];then
 					file_stamp="$(timestamp "${dep_file}")"
-					path_stamp="$(timestamp ${dep_path}/{*,*/*,*/*/*,*/*/*/*})"
+					path_stamp="$(timestamp ${dep_path}/*)"
 					if [[ -n "${file_stamp}" && -n "${path_stamp}" ]] && (( "${file_stamp}" > "${path_stamp}" ));then
 						TRASH+="${dep_path}/* "
 					elif [[ -n "${file_stamp}" && -n "${path_stamp}" ]] && (( "${file_stamp}" < "${path_stamp}" ));then

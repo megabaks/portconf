@@ -3,7 +3,11 @@
 # Distributed under the terms of the GNU General Public License v3 or later
 ############################################################################
 ################ portage functions #########################################
-source /usr/lib*/portage/bin/isolated-functions.sh
+if [[ -f "/lib/gentoo/functions.sh" ]]; then
+	source /lib/gentoo/functions.sh
+else
+	source /usr/lib*/portage/bin/isolated-functions.sh
+fi
 ############################################################################
 ################ colors ####################################################
 green="\033[01;32m"
@@ -62,7 +66,7 @@ PROFILE="$(tr "[:space:]" $'\n' <<< ${profile_uses})"
 ################ all_use_all_profiles ######################################
 all_use_all_profiles(){
 	for target in `eselect --brief profile list`;do
-		profile_uses="$(profile "/usr/portage/profiles/${target}")"
+		profile_uses="$(profile "${PORTDIR}/profiles/${target}")"
 		USEs="$(sort_passed_uses "${profile_uses}")"
 		echo -e "\n${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
 		unset USEs
@@ -73,7 +77,7 @@ all_use_all_profiles(){
 profile_use(){
 	PS3=`echo -e "${contrast}Choose number:${restore} "`
 	select target in `eselect --brief profile list`;do
-		profile_uses="$(profile "/usr/portage/profiles/${target}")"
+		profile_uses="$(profile "${PORTDIR}/profiles/${target}")"
 		USEs="$(sort_passed_uses "${profile_uses}")"
 		echo -e "\n${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
 		unset USEs
@@ -88,7 +92,7 @@ current_profile(){
 	else
 		target="$(readlink /etc/portage/make.profile | sed 's|.*/profiles/||')"
 	fi
-	profile_uses="$(profile "/usr/portage/profiles/${target}")"
+	profile_uses="$(profile "${PORTDIR}/profiles/${target}")"
 	USEs="$(sort_passed_uses "${PROFILE}")"
 	echo -e "${green}${target}${restore}: "${USEs} | fold -s -w `tput cols`
 	unset USEs
@@ -1609,7 +1613,7 @@ overlays(){
 				fi
 			done
 		else
-			TRASH_REPO+="repo '${green}${repo}${restore}' used, but not exist in \${PORTDIR_OVERLAY}"$'\n'
+			TRASH_REPO+="repo '${green}${repo}${restore}' used, but not exists in \${PORTDIR_OVERLAY}"$'\n'
 			continue
 		fi
 	done
